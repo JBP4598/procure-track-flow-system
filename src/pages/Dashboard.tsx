@@ -5,6 +5,7 @@ import { KPICard } from '@/components/KPICard';
 import { BudgetSummary } from '@/components/BudgetSummary';
 import { RecentActivity } from '@/components/RecentActivity';
 import { ProcurementFlowChart } from '@/components/ProcurementFlowChart';
+import { DollarSign, FileText, ShoppingCart, CheckCircle } from 'lucide-react';
 
 export default function Dashboard() {
   return (
@@ -16,10 +17,34 @@ export default function Dashboard() {
         
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <KPICard />
-          <KPICard />
-          <KPICard />
-          <KPICard />
+          <KPICard
+            title="Total Budget"
+            value="₱2.5M"
+            icon={DollarSign}
+            color="green"
+            trend={{ value: 12, isPositive: true }}
+          />
+          <KPICard
+            title="Active PRs"
+            value="24"
+            icon={FileText}
+            color="blue"
+            trend={{ value: 8, isPositive: true }}
+          />
+          <KPICard
+            title="Pending POs"
+            value="12"
+            icon={ShoppingCart}
+            color="yellow"
+            trend={{ value: -5, isPositive: false }}
+          />
+          <KPICard
+            title="Completed IARs"
+            value="18"
+            icon={CheckCircle}
+            color="purple"
+            trend={{ value: 15, isPositive: true }}
+          />
         </div>
 
         {/* Budget Summary and Recent Activity */}
