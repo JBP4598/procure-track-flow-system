@@ -1,11 +1,71 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, Plus, FileText } from 'lucide-react';
+import { CreatePPMPDialog } from '@/components/CreatePPMPDialog';
+import { PPMPList } from '@/components/PPMPList';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function PPMP() {
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [stats, setStats] = useState({
+    totalPPMPs: 0,
+    totalBudget: 0,
+    totalItems: 0,
+  });
+  const { user } = useAuth();
+
+  const handlePPMPCreated = () => {
+    setRefreshTrigger(prev => prev + 1);
+    fetchStats();
+  };
+
+  const fetchStats = async () => {
+    if (!user) return;
+
+    try {
+      // Get PPMP count and total budget
+      const { data: ppmpData, error: ppmpError } = await supabase
+        .from('ppmp_files')
+        .select('total_budget');
+
+      if (ppmpError) throw ppmpError;
+
+      const totalPPMPs = ppmpData?.length || 0;
+      const totalBudget = ppmpData?.reduce((sum, ppmp) => sum + ppmp.total_budget, 0) || 0;
+
+      // Get total items count
+      const { count: itemsCount, error: itemsError } = await supabase
+        .from('ppmp_items')
+        .select('*', { count: 'exact', head: true });
+
+      if (itemsError) throw itemsError;
+
+      setStats({
+        totalPPMPs,
+        totalBudget,
+        totalItems: itemsCount || 0,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, [user, refreshTrigger]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -19,10 +79,7 @@ export default function PPMP() {
               <Upload className="mr-2 h-4 w-4" />
               Upload PPMP
             </Button>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create New PPMP
-            </Button>
+            <CreatePPMPDialog onPPMPCreated={handlePPMPCreated} />
           </div>
         </div>
 
@@ -34,8 +91,10 @@ export default function PPMP() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">No PPMPs created yet</p>
+              <div className="text-2xl font-bold">{stats.totalPPMPs}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.totalPPMPs === 0 ? 'No PPMPs created yet' : 'Total procurement plans'}
+              </p>
             </CardContent>
           </Card>
           
@@ -45,8 +104,8 @@ export default function PPMP() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₱0.00</div>
-              <p className="text-xs text-muted-foreground">Current fiscal year</p>
+              <div className="text-2xl font-bold">{formatCurrency(stats.totalBudget)}</div>
+              <p className="text-xs text-muted-foreground">Total planned budget</p>
             </CardContent>
           </Card>
           
@@ -56,38 +115,14 @@ export default function PPMP() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{stats.totalItems}</div>
               <p className="text-xs text-muted-foreground">Procurement items</p>
             </CardContent>
           </Card>
         </div>
 
         {/* PPMP List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>PPMP Files</CardTitle>
-            <CardDescription>
-              Your Project Procurement Management Plans for different fiscal years
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No PPMPs</h3>
-              <p className="mt-1 text-sm text-gray-500">Get started by creating a new PPMP or uploading an existing one.</p>
-              <div className="mt-6 flex justify-center gap-2">
-                <Button variant="outline">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload PPMP
-                </Button>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create New
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <PPMPList refreshTrigger={refreshTrigger} />
       </div>
     </Layout>
   );
