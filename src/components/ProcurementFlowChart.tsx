@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 
@@ -33,7 +32,7 @@ const FlowStep: React.FC<FlowStepProps> = ({ title, status, count, isLast }) => 
           <p className="text-xs">{count} items</p>
         </div>
       </div>
-      {!isLast && <ArrowRight className="h-5 w-5 text-gray-400 mx-2" />}
+      {!isLast && <ArrowRight className="h-5 w-5 text-muted-foreground mx-2" />}
     </div>
   );
 };
@@ -48,8 +47,8 @@ export const ProcurementFlowChart: React.FC = () => {
   ];
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Procurement Flow Progress</h3>
+    <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+      <h3 className="text-lg font-semibold text-card-foreground mb-4">Procurement Flow Progress</h3>
       <div className="flex items-center justify-between overflow-x-auto">
         {flowSteps.map((step, index) => (
           <FlowStep

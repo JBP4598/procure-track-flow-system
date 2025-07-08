@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Clock, User, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -59,8 +58,8 @@ export const RecentActivity: React.FC = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+    <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+      <h3 className="text-lg font-semibold text-card-foreground mb-4">Recent Activity</h3>
       <div className="space-y-4">
         {activities.map((activity) => (
           <div key={activity.id} className="flex items-start space-x-3">
@@ -68,8 +67,8 @@ export const RecentActivity: React.FC = () => {
               {getStatusIcon(activity.status)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-              <div className="flex items-center mt-1 text-xs text-gray-500">
+              <p className="text-sm font-medium text-card-foreground">{activity.title}</p>
+              <div className="flex items-center mt-1 text-xs text-muted-foreground">
                 <User className="h-3 w-3 mr-1" />
                 <span className="mr-2">{activity.user}</span>
                 <Clock className="h-3 w-3 mr-1" />

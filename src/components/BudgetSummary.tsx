@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TrendingUp, TrendingDown, Wallet, Target } from 'lucide-react';
 
@@ -19,12 +18,12 @@ export const BudgetSummary: React.FC = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Budget Overview</h3>
+    <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+      <h3 className="text-lg font-semibold text-card-foreground mb-4">Budget Overview</h3>
       <div className="space-y-4">
         {budgetData.map((item, index) => (
           <div key={index} className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-600">{item.label}</span>
+            <span className="text-sm font-medium text-muted-foreground">{item.label}</span>
             <span className={`text-lg font-bold ${item.color}`}>
               {formatCurrency(item.amount)}
             </span>
@@ -32,7 +31,7 @@ export const BudgetSummary: React.FC = () => {
         ))}
         <div className="border-t pt-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-600">Remaining Balance</span>
+            <span className="text-sm font-medium text-muted-foreground">Remaining Balance</span>
             <span className="text-lg font-bold text-blue-600">
               {formatCurrency(1800000)}
             </span>
