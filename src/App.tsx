@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import PPMP from "./pages/PPMP";
 import PurchaseRequests from "./pages/PurchaseRequests";
+import PurchaseOrders from "./pages/PurchaseOrders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,14 @@ const AppContent = () => {
         element={
           <ProtectedRoute>
             <PurchaseRequests />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/purchase-orders"
+        element={
+          <ProtectedRoute>
+            <PurchaseOrders />
           </ProtectedRoute>
         }
       />

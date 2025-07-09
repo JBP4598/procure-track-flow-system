@@ -5,8 +5,8 @@ import { Calendar, FileText, Truck, CheckCircle, CreditCard, BarChart3 } from 'l
 const menuItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/', active: true },
   { icon: Calendar, label: 'PPMP Module', path: '/ppmp' },
-  { icon: FileText, label: 'Purchase Request', path: '/pr' },
-  { icon: Truck, label: 'Purchase Order', path: '/po' },
+  { icon: FileText, label: 'Purchase Request', path: '/purchase-requests' },
+  { icon: Truck, label: 'Purchase Order', path: '/purchase-orders' },
   { icon: CheckCircle, label: 'Inspection & Acceptance', path: '/iar' },
   { icon: CreditCard, label: 'Disbursement Voucher', path: '/dv' },
 ];
