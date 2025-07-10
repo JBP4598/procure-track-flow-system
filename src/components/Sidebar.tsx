@@ -7,7 +7,7 @@ const menuItems = [
   { icon: Calendar, label: 'PPMP Module', path: '/ppmp' },
   { icon: FileText, label: 'Purchase Request', path: '/purchase-requests' },
   { icon: Truck, label: 'Purchase Order', path: '/purchase-orders' },
-  { icon: CheckCircle, label: 'Inspection & Acceptance', path: '/iar' },
+  { icon: CheckCircle, label: 'Inspection & Acceptance', path: '/inspection-reports' },
   { icon: CreditCard, label: 'Disbursement Voucher', path: '/dv' },
 ];
 
