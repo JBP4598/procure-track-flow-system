@@ -781,6 +781,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_user_access_po: {
+        Args: { _user_id: string; _po_id: string }
+        Returns: boolean
+      }
+      can_user_access_po_item: {
+        Args: { _user_id: string; _po_item_id: string }
+        Returns: boolean
+      }
       get_user_department: {
         Args: { _user_id: string }
         Returns: string
