@@ -8,7 +8,7 @@ const menuItems = [
   { icon: FileText, label: 'Purchase Request', path: '/purchase-requests' },
   { icon: Truck, label: 'Purchase Order', path: '/purchase-orders' },
   { icon: CheckCircle, label: 'Inspection & Acceptance', path: '/inspection-reports' },
-  { icon: CreditCard, label: 'Disbursement Voucher', path: '/dv' },
+  { icon: CreditCard, label: 'Disbursement Voucher', path: '/disbursement-vouchers' },
 ];
 
 export const Sidebar: React.FC = () => {

@@ -12,6 +12,7 @@ import PPMP from "./pages/PPMP";
 import PurchaseRequests from "./pages/PurchaseRequests";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import InspectionReports from "./pages/InspectionReports";
+import DisbursementVouchers from "./pages/DisbursementVouchers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,14 @@ const AppContent = () => {
         element={
           <ProtectedRoute>
             <InspectionReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/disbursement-vouchers"
+        element={
+          <ProtectedRoute>
+            <DisbursementVouchers />
           </ProtectedRoute>
         }
       />
