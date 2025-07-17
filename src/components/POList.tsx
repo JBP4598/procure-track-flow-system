@@ -8,21 +8,32 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { PODetailDialog } from './PODetailDialog';
 
 interface PurchaseOrder {
   id: string;
   po_number: string;
   supplier_name: string;
   supplier_contact: string | null;
+  supplier_address: string | null;
   total_amount: number;
   status: 'pending' | 'approved' | 'cancelled';
   delivery_status: 'not_delivered' | 'partially_delivered' | 'fully_delivered';
   delivery_date: string | null;
+  terms_conditions: string | null;
   created_at: string;
+  approved_at: string | null;
   created_by: string;
   profiles: {
     full_name: string;
   } | null;
+  created_by_profile: {
+    full_name: string;
+  } | null;
+  approved_by_profile: {
+    full_name: string;
+  } | null;
+  po_items?: any[];
 }
 
 interface POListProps {
@@ -32,6 +43,7 @@ interface POListProps {
 export function POList({ refreshTrigger }: POListProps) {
   const [pos, setPOs] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -45,13 +57,22 @@ export function POList({ refreshTrigger }: POListProps) {
           po_number,
           supplier_name,
           supplier_contact,
+          supplier_address,
           total_amount,
           status,
           delivery_status,
           delivery_date,
+          terms_conditions,
           created_at,
+          approved_at,
           created_by,
           profiles!purchase_orders_created_by_fkey (
+            full_name
+          ),
+          created_by_profile:profiles!purchase_orders_created_by_fkey (
+            full_name
+          ),
+          approved_by_profile:profiles!purchase_orders_approved_by_fkey (
             full_name
           )
         `)
@@ -233,7 +254,11 @@ export function POList({ refreshTrigger }: POListProps) {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setSelectedPO(po)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         {po.status === 'pending' && (
@@ -264,6 +289,12 @@ export function POList({ refreshTrigger }: POListProps) {
           </div>
         )}
       </CardContent>
+      
+      <PODetailDialog
+        open={!!selectedPO}
+        onOpenChange={(open) => !open && setSelectedPO(null)}
+        po={selectedPO}
+      />
     </Card>
   );
 }

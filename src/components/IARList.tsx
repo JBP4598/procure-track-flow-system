@@ -7,6 +7,7 @@ import { Search, Eye, FileText, Calendar, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { IARDetailDialog } from './IARDetailDialog';
 
 interface InspectionReport {
   id: string;
@@ -33,6 +34,7 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
   const [iars, setIARs] = useState<InspectionReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIAR, setSelectedIAR] = useState<InspectionReport | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -208,13 +210,7 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
                           variant="outline"
                           size="sm"
                           className="flex items-center gap-2"
-                          onClick={() => {
-                            // TODO: Implement view details functionality
-                            toast({
-                              title: "Coming Soon",
-                              description: "View details functionality will be implemented soon.",
-                            });
-                          }}
+                          onClick={() => setSelectedIAR(iar)}
                         >
                           <Eye className="h-4 w-4" />
                           View Details
@@ -235,6 +231,12 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
           )}
         </CardContent>
       </Card>
+      
+      <IARDetailDialog
+        open={!!selectedIAR}
+        onOpenChange={(open) => !open && setSelectedIAR(null)}
+        iar={selectedIAR}
+      />
     </div>
   );
 };
