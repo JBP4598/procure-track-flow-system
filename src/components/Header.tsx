@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Bell, Settings, User, LogOut } from 'lucide-react';
+import { MobileNav } from './MobileNav';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,10 +19,13 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 h-16 px-6 flex items-center justify-between">
-      <div className="flex items-center">
-        <h1 className="text-2xl font-bold text-blue-900">ProcureTrack</h1>
-        <span className="ml-2 text-sm text-gray-500">Government Procurement Management System</span>
+    <header className="bg-white border-b border-gray-200 h-16 mobile-padding flex items-center justify-between">
+      <div className="flex items-center space-x-2">
+        <MobileNav />
+        <div>
+          <h1 className="text-lg md:text-2xl font-bold text-blue-900">ProcureTrack</h1>
+          <span className="hidden md:block text-sm text-gray-500">Government Procurement Management System</span>
+        </div>
       </div>
       <div className="flex items-center space-x-4">
         <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">

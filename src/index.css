@@ -6,6 +6,21 @@
 All colors MUST be HSL.
 */
 
+/* Mobile-first responsive design utilities */
+@layer utilities {
+  .mobile-padding {
+    @apply px-4 md:px-6;
+  }
+  
+  .mobile-text {
+    @apply text-sm md:text-base;
+  }
+  
+  .mobile-container {
+    @apply w-full max-w-full md:max-w-none;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
