@@ -789,6 +789,10 @@ export type Database = {
         Args: { _user_id: string; _po_item_id: string }
         Returns: boolean
       }
+      generate_document_number: {
+        Args: { prefix: string; table_name: string }
+        Returns: string
+      }
       get_user_department: {
         Args: { _user_id: string }
         Returns: string
