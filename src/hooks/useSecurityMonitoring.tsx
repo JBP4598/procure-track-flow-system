@@ -5,6 +5,7 @@ interface SecurityAttempt {
   email: string;
   timestamp: number;
   ip?: string;
+  userAgent?: string;
 }
 
 interface UseSecurityMonitoringReturn {
@@ -43,6 +44,7 @@ export const useSecurityMonitoring = (): UseSecurityMonitoringReturn => {
     const newAttempt: SecurityAttempt = {
       email: email.toLowerCase(),
       timestamp: now,
+      userAgent: navigator.userAgent,
     };
 
     const updatedAttempts = [...failedAttempts, newAttempt].filter(
@@ -52,8 +54,12 @@ export const useSecurityMonitoring = (): UseSecurityMonitoringReturn => {
     setFailedAttempts(updatedAttempts);
     localStorage.setItem('security_attempts', JSON.stringify(updatedAttempts));
 
-    // Log security event to database
-    logSecurityEvent('failed_login', { email, timestamp: now });
+    // Log security event to database (email is hashed for privacy)
+    logSecurityEvent('failed_login', { 
+      email_hash: btoa(email.toLowerCase()), 
+      timestamp: now,
+      user_agent: navigator.userAgent
+    });
   };
 
   const isAccountLocked = (email: string): boolean => {
