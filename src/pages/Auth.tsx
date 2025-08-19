@@ -11,11 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield, Clock } from 'lucide-react';
+import { DepartmentSelect } from '@/components/DepartmentSelect';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -97,6 +99,11 @@ export default function Auth() {
       ...passwordValidation.errors, 
       ...nameValidation.errors
     ];
+
+    // Validate department selection
+    if (!departmentId) {
+      allErrors.push('Please select your department');
+    }
     
     if (allErrors.length > 0) {
       setValidationErrors(allErrors);
@@ -104,7 +111,7 @@ export default function Auth() {
       return;
     }
 
-    const { error } = await signUp(cleanEmail, cleanPassword, cleanFullName);
+    const { error } = await signUp(cleanEmail, cleanPassword, cleanFullName, departmentId);
     
     if (error) {
       if (error.message.includes('User already registered')) {
@@ -267,6 +274,11 @@ export default function Auth() {
                       Password must contain at least 8 characters with uppercase, lowercase, number, and special character.
                     </div>
                   </div>
+                   <DepartmentSelect
+                    value={departmentId}
+                    onValueChange={setDepartmentId}
+                    required
+                  />
                   {validationErrors.length > 0 && (
                     <Alert variant="destructive">
                       <AlertDescription>
