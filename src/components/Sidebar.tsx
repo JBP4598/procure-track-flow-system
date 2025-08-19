@@ -1,7 +1,9 @@
 
-import React from 'react';
-import { Calendar, FileText, Truck, CheckCircle, CreditCard, BarChart3 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, FileText, Truck, CheckCircle, CreditCard, BarChart3, Users } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const menuItems = [
   { icon: BarChart3, label: 'Dashboard', path: '/' },
@@ -14,12 +16,41 @@ const menuItems = [
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        setIsAdmin(data.role === 'admin');
+      } catch (error) {
+        console.error('Error checking admin role:', error);
+      }
+    };
+
+    checkAdminRole();
+  }, [user]);
+
+  const adminMenuItems = isAdmin 
+    ? [{ icon: Users, label: 'User Management', path: '/admin' }]
+    : [];
+
+  const allMenuItems = [...menuItems, ...adminMenuItems];
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 h-[calc(100vh-4rem)]">
       <nav className="p-4">
         <ul className="space-y-2">
-          {menuItems.map((item, index) => {
+          {allMenuItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (

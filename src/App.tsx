@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { SecurityHeaders } from "@/components/SecurityHeaders";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
 import PPMP from "./pages/PPMP";
 import PurchaseRequests from "./pages/PurchaseRequests";
 import PurchaseOrders from "./pages/PurchaseOrders";
@@ -40,6 +41,14 @@ const AppContent = () => {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Admin />
           </ProtectedRoute>
         }
       />

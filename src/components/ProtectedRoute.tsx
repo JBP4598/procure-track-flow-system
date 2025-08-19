@@ -2,6 +2,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { ProfileCompletionCheck } from '@/components/ProfileCompletionCheck';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -26,5 +27,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <ProfileCompletionCheck>
+      {children}
+    </ProfileCompletionCheck>
+  );
 };
