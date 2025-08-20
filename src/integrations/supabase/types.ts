@@ -402,39 +402,63 @@ export type Database = {
       }
       ppmp_files: {
         Row: {
+          agency_letterhead_url: string | null
           created_at: string | null
           department_id: string
+          end_user_unit: string | null
           file_name: string
           file_url: string | null
           fiscal_year: number
           id: string
+          ppmp_number: string | null
+          prepared_by: string | null
+          prepared_date: string | null
           status: string | null
+          status_type: string | null
+          submitted_by: string | null
+          submitted_date: string | null
           total_budget: number
           updated_at: string | null
           uploaded_by: string
           version: number | null
         }
         Insert: {
+          agency_letterhead_url?: string | null
           created_at?: string | null
           department_id: string
+          end_user_unit?: string | null
           file_name: string
           file_url?: string | null
           fiscal_year: number
           id?: string
+          ppmp_number?: string | null
+          prepared_by?: string | null
+          prepared_date?: string | null
           status?: string | null
+          status_type?: string | null
+          submitted_by?: string | null
+          submitted_date?: string | null
           total_budget?: number
           updated_at?: string | null
           uploaded_by: string
           version?: number | null
         }
         Update: {
+          agency_letterhead_url?: string | null
           created_at?: string | null
           department_id?: string
+          end_user_unit?: string | null
           file_name?: string
           file_url?: string | null
           fiscal_year?: number
           id?: string
+          ppmp_number?: string | null
+          prepared_by?: string | null
+          prepared_date?: string | null
           status?: string | null
+          status_type?: string | null
+          submitted_by?: string | null
+          submitted_date?: string | null
           total_budget?: number
           updated_at?: string | null
           uploaded_by?: string
@@ -462,14 +486,25 @@ export type Database = {
           budget_category: string
           created_at: string | null
           description: string | null
+          expected_delivery_period: string | null
           id: string
           item_name: string
           ppmp_file_id: string
+          pre_procurement_conference: boolean | null
+          procurement_end_date: string | null
           procurement_method: string | null
+          procurement_start_date: string | null
+          project_objective: string | null
+          project_size: string | null
+          project_type: string | null
           quantity: number
+          recommended_procurement_mode: string | null
           remaining_budget: number | null
           remaining_quantity: number | null
+          remarks_additional: string | null
           schedule_quarter: string | null
+          source_of_funds: string | null
+          supporting_documents: string[] | null
           total_cost: number
           unit: string
           unit_cost: number
@@ -479,14 +514,25 @@ export type Database = {
           budget_category: string
           created_at?: string | null
           description?: string | null
+          expected_delivery_period?: string | null
           id?: string
           item_name: string
           ppmp_file_id: string
+          pre_procurement_conference?: boolean | null
+          procurement_end_date?: string | null
           procurement_method?: string | null
+          procurement_start_date?: string | null
+          project_objective?: string | null
+          project_size?: string | null
+          project_type?: string | null
           quantity: number
+          recommended_procurement_mode?: string | null
           remaining_budget?: number | null
           remaining_quantity?: number | null
+          remarks_additional?: string | null
           schedule_quarter?: string | null
+          source_of_funds?: string | null
+          supporting_documents?: string[] | null
           total_cost: number
           unit: string
           unit_cost: number
@@ -496,14 +542,25 @@ export type Database = {
           budget_category?: string
           created_at?: string | null
           description?: string | null
+          expected_delivery_period?: string | null
           id?: string
           item_name?: string
           ppmp_file_id?: string
+          pre_procurement_conference?: boolean | null
+          procurement_end_date?: string | null
           procurement_method?: string | null
+          procurement_start_date?: string | null
+          project_objective?: string | null
+          project_size?: string | null
+          project_type?: string | null
           quantity?: number
+          recommended_procurement_mode?: string | null
           remaining_budget?: number | null
           remaining_quantity?: number | null
+          remarks_additional?: string | null
           schedule_quarter?: string | null
+          source_of_funds?: string | null
+          supporting_documents?: string[] | null
           total_cost?: number
           unit?: string
           unit_cost?: number
@@ -791,6 +848,10 @@ export type Database = {
       }
       generate_document_number: {
         Args: { prefix: string; table_name: string }
+        Returns: string
+      }
+      generate_ppmp_number: {
+        Args: { dept_code: string; fiscal_year: number }
         Returns: string
       }
       get_user_department: {
