@@ -6,6 +6,7 @@ import { Eye, Edit, Download, Calendar, Users, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { PPMPDetailDialog } from '@/components/PPMPDetailDialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface PPMPFile {
   id: string;
@@ -32,6 +33,7 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
   const [selectedPPMP, setSelectedPPMP] = useState<PPMPFile | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const fetchPPMPs = async () => {
     if (!user) return;
@@ -89,6 +91,23 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
   const handleViewPPMP = (ppmp: PPMPFile) => {
     setSelectedPPMP(ppmp);
     setDetailDialogOpen(true);
+  };
+
+  const handleEditPPMP = (ppmp: PPMPFile) => {
+    if (ppmp.status !== 'draft') {
+      toast({
+        title: "Cannot Edit PPMP",
+        description: `PPMPs with status "${ppmp.status}" cannot be edited. Only draft PPMPs can be modified.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // TODO: Open edit dialog/wizard
+    toast({
+      title: "Edit Feature",
+      description: "PPMP editing functionality will be implemented soon.",
+    });
   };
 
   if (loading) {
@@ -175,7 +194,11 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
                       <Eye className="h-4 w-4 mr-1" />
                       View
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEditPPMP(PPMPFile)}
+                    >
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
                     </Button>
