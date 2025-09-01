@@ -16,6 +16,7 @@ import { DepartmentSelect } from '@/components/DepartmentSelect';
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -94,6 +95,11 @@ export default function Auth() {
     const passwordValidation = validatePassword(cleanPassword);
     const nameValidation = validateName(cleanFullName);
     
+    // Validate password confirmation
+    if (cleanPassword !== sanitizeInput(confirmPassword)) {
+      allErrors.push('Passwords do not match');
+    }
+
     const allErrors = [
       ...emailValidation.errors, 
       ...passwordValidation.errors, 
@@ -273,6 +279,18 @@ export default function Auth() {
                     <div className="text-xs text-gray-500 mt-1">
                       Password must contain at least 8 characters with uppercase, lowercase, number, and special character.
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      placeholder="Confirm your password"
+                      autoComplete="new-password"
+                    />
                   </div>
                    <DepartmentSelect
                     value={departmentId}
