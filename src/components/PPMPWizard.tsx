@@ -16,9 +16,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PPMPItemForm } from '@/components/PPMPItemForm';
 
+interface PPMPFile {
+  id: string;
+  file_name: string;
+  fiscal_year: number;
+  total_budget: number;
+  status: string;
+  created_at: string;
+  version: number;
+  ppmp_number?: string;
+  status_type?: string;
+  end_user_unit?: string;
+  prepared_date?: string;
+  submitted_date?: string;
+}
+
 interface PPMPWizardProps {
   onComplete: () => void;
   onCancel: () => void;
+  editingPPMP?: PPMPFile | null;
 }
 
 interface PPMPFormData {
@@ -55,7 +71,7 @@ interface PPMPItem {
   remarks_additional: string;
 }
 
-export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel }) => {
+export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, editingPPMP }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
@@ -118,109 +134,230 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel }) 
     updateFormData('total_budget', total);
   };
 
+  // Initialize form data when editing
   useEffect(() => {
-    calculateTotalBudget();
-  }, [items]);
+    if (editingPPMP) {
+      setFormData({
+        file_name: editingPPMP.file_name,
+        fiscal_year: editingPPMP.fiscal_year,
+        status_type: (editingPPMP.status_type || 'INDICATIVE') as 'INDICATIVE' | 'FINAL',
+        end_user_unit: editingPPMP.end_user_unit || '',
+        prepared_date: editingPPMP.prepared_date ? new Date(editingPPMP.prepared_date) : null,
+        submitted_date: editingPPMP.submitted_date ? new Date(editingPPMP.submitted_date) : null,
+        agency_letterhead_url: '',
+        total_budget: editingPPMP.total_budget,
+      });
+      
+      // Load existing items
+      loadExistingItems();
+    }
+  }, [editingPPMP]);
+
+  const loadExistingItems = async () => {
+    if (!editingPPMP) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('ppmp_items')
+        .select('*')
+        .eq('ppmp_file_id', editingPPMP.id);
+
+      if (error) throw error;
+      
+      const existingItems: PPMPItem[] = data.map(item => ({
+        id: item.id,
+        item_name: item.item_name,
+        description: item.description || '',
+        project_objective: item.project_objective || '',
+        project_type: (item.project_type || 'Goods') as PPMPItem['project_type'],
+        project_size: item.project_size || '',
+        unit: item.unit,
+        quantity: item.quantity,
+        unit_cost: item.unit_cost,
+        total_cost: item.total_cost,
+        budget_category: item.budget_category,
+        recommended_procurement_mode: item.recommended_procurement_mode || '',
+        pre_procurement_conference: item.pre_procurement_conference || false,
+        procurement_start_date: item.procurement_start_date ? new Date(item.procurement_start_date) : null,
+        procurement_end_date: item.procurement_end_date ? new Date(item.procurement_end_date) : null,
+        expected_delivery_period: item.expected_delivery_period || '',
+        source_of_funds: item.source_of_funds || '',
+        schedule_quarter: item.schedule_quarter || 'Q1',
+        supporting_documents: item.supporting_documents || [],
+        remarks_additional: item.remarks_additional || '',
+      }));
+      
+      setItems(existingItems);
+    } catch (error) {
+      console.error('Error loading existing items:', error);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
-      // Get user's department
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('department_id')
-        .eq('id', user.id)
-        .single();
+      if (editingPPMP) {
+        // Update existing PPMP
+        const { error: updateError } = await supabase
+          .from('ppmp_files')
+          .update({
+            file_name: formData.file_name,
+            fiscal_year: formData.fiscal_year,
+            status_type: formData.status_type,
+            end_user_unit: formData.end_user_unit,
+            prepared_date: formData.prepared_date?.toISOString().split('T')[0] || null,
+            submitted_date: formData.submitted_date?.toISOString().split('T')[0] || null,
+            total_budget: formData.total_budget,
+          })
+          .eq('id', editingPPMP.id);
 
-      if (profileError) throw profileError;
+        if (updateError) throw updateError;
 
-      // Get department code for PPMP number generation
-      const { data: department, error: deptError } = await supabase
-        .from('departments')
-        .select('code')
-        .eq('id', profile.department_id)
-        .single();
-
-      if (deptError) throw deptError;
-
-      // Generate PPMP number
-      const { data: ppmpNumber, error: numberError } = await supabase
-        .rpc('generate_ppmp_number', {
-          dept_code: department.code,
-          fiscal_year: formData.fiscal_year
-        });
-
-      if (numberError) throw numberError;
-
-      // Create PPMP file
-      const { data: ppmpFile, error: ppmpError } = await supabase
-        .from('ppmp_files')
-        .insert({
-          file_name: formData.file_name,
-          fiscal_year: formData.fiscal_year,
-          status_type: formData.status_type,
-          end_user_unit: formData.end_user_unit,
-          prepared_date: formData.prepared_date?.toISOString().split('T')[0] || null,
-          submitted_date: formData.submitted_date?.toISOString().split('T')[0] || null,
-          agency_letterhead_url: formData.agency_letterhead_url,
-          total_budget: formData.total_budget,
-          ppmp_number: ppmpNumber,
-          department_id: profile.department_id,
-          uploaded_by: user.id,
-          prepared_by: user.id,
-        })
-        .select()
-        .single();
-
-      if (ppmpError) throw ppmpError;
-
-      // Create PPMP items
-      if (items.length > 0) {
-        const itemsToInsert = items.map(item => ({
-          ppmp_file_id: ppmpFile.id,
-          item_name: item.item_name,
-          description: item.description,
-          project_objective: item.project_objective,
-          project_type: item.project_type,
-          project_size: item.project_size,
-          unit: item.unit,
-          quantity: item.quantity,
-          unit_cost: item.unit_cost,
-          total_cost: item.total_cost,
-          budget_category: item.budget_category,
-          recommended_procurement_mode: item.recommended_procurement_mode,
-          pre_procurement_conference: item.pre_procurement_conference,
-          procurement_start_date: item.procurement_start_date?.toISOString().split('T')[0] || null,
-          procurement_end_date: item.procurement_end_date?.toISOString().split('T')[0] || null,
-          expected_delivery_period: item.expected_delivery_period,
-          source_of_funds: item.source_of_funds,
-          schedule_quarter: item.schedule_quarter,
-          supporting_documents: item.supporting_documents,
-          remarks_additional: item.remarks_additional,
-          remaining_quantity: item.quantity,
-          remaining_budget: item.total_cost,
-        }));
-
-        const { error: itemsError } = await supabase
+        // Delete existing items
+        const { error: deleteError } = await supabase
           .from('ppmp_items')
-          .insert(itemsToInsert);
+          .delete()
+          .eq('ppmp_file_id', editingPPMP.id);
 
-        if (itemsError) throw itemsError;
+        if (deleteError) throw deleteError;
+
+        // Insert updated items
+        if (items.length > 0) {
+          const itemsToInsert = items.map(item => ({
+            ppmp_file_id: editingPPMP.id,
+            item_name: item.item_name,
+            description: item.description,
+            project_objective: item.project_objective,
+            project_type: item.project_type,
+            project_size: item.project_size,
+            unit: item.unit,
+            quantity: item.quantity,
+            unit_cost: item.unit_cost,
+            total_cost: item.total_cost,
+            budget_category: item.budget_category,
+            recommended_procurement_mode: item.recommended_procurement_mode,
+            pre_procurement_conference: item.pre_procurement_conference,
+            procurement_start_date: item.procurement_start_date?.toISOString().split('T')[0] || null,
+            procurement_end_date: item.procurement_end_date?.toISOString().split('T')[0] || null,
+            expected_delivery_period: item.expected_delivery_period,
+            source_of_funds: item.source_of_funds,
+            schedule_quarter: item.schedule_quarter,
+            supporting_documents: item.supporting_documents,
+            remarks_additional: item.remarks_additional,
+            remaining_quantity: item.quantity,
+            remaining_budget: item.total_cost,
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('ppmp_items')
+            .insert(itemsToInsert);
+
+          if (itemsError) throw itemsError;
+        }
+
+        toast({
+          title: "Success",
+          description: `PPMP updated successfully`,
+        });
+      } else {
+        // Create new PPMP (existing logic)
+        // Get user's department
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('department_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        // Get department code for PPMP number generation
+        const { data: department, error: deptError } = await supabase
+          .from('departments')
+          .select('code')
+          .eq('id', profile.department_id)
+          .single();
+
+        if (deptError) throw deptError;
+
+        // Generate PPMP number
+        const { data: ppmpNumber, error: numberError } = await supabase
+          .rpc('generate_ppmp_number', {
+            dept_code: department.code,
+            fiscal_year: formData.fiscal_year
+          });
+
+        if (numberError) throw numberError;
+
+        // Create PPMP file
+        const { data: ppmpFile, error: ppmpError } = await supabase
+          .from('ppmp_files')
+          .insert({
+            file_name: formData.file_name,
+            fiscal_year: formData.fiscal_year,
+            status_type: formData.status_type,
+            end_user_unit: formData.end_user_unit,
+            prepared_date: formData.prepared_date?.toISOString().split('T')[0] || null,
+            submitted_date: formData.submitted_date?.toISOString().split('T')[0] || null,
+            agency_letterhead_url: formData.agency_letterhead_url,
+            total_budget: formData.total_budget,
+            ppmp_number: ppmpNumber,
+            department_id: profile.department_id,
+            uploaded_by: user.id,
+            prepared_by: user.id,
+          })
+          .select()
+          .single();
+
+        if (ppmpError) throw ppmpError;
+
+        // Create PPMP items
+        if (items.length > 0) {
+          const itemsToInsert = items.map(item => ({
+            ppmp_file_id: ppmpFile.id,
+            item_name: item.item_name,
+            description: item.description,
+            project_objective: item.project_objective,
+            project_type: item.project_type,
+            project_size: item.project_size,
+            unit: item.unit,
+            quantity: item.quantity,
+            unit_cost: item.unit_cost,
+            total_cost: item.total_cost,
+            budget_category: item.budget_category,
+            recommended_procurement_mode: item.recommended_procurement_mode,
+            pre_procurement_conference: item.pre_procurement_conference,
+            procurement_start_date: item.procurement_start_date?.toISOString().split('T')[0] || null,
+            procurement_end_date: item.procurement_end_date?.toISOString().split('T')[0] || null,
+            expected_delivery_period: item.expected_delivery_period,
+            source_of_funds: item.source_of_funds,
+            schedule_quarter: item.schedule_quarter,
+            supporting_documents: item.supporting_documents,
+            remarks_additional: item.remarks_additional,
+            remaining_quantity: item.quantity,
+            remaining_budget: item.total_cost,
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('ppmp_items')
+            .insert(itemsToInsert);
+
+          if (itemsError) throw itemsError;
+        }
+
+        toast({
+          title: "Success",
+          description: `PPMP ${ppmpNumber} created successfully`,
+        });
       }
-
-      toast({
-        title: "Success",
-        description: `PPMP ${ppmpNumber} created successfully`,
-      });
 
       onComplete();
     } catch (error) {
-      console.error('Error creating PPMP:', error);
+      console.error('Error saving PPMP:', error);
       toast({
         title: "Error",
-        description: "Failed to create PPMP. Please try again.",
+        description: `Failed to ${editingPPMP ? 'update' : 'create'} PPMP. Please try again.`,
         variant: "destructive",
       });
     }
@@ -236,7 +373,9 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel }) 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-8">
-        <h2 className="text-3xl font-bold mb-4">Create Project Procurement Management Plan</h2>
+        <h2 className="text-3xl font-bold mb-4">
+          {editingPPMP ? 'Edit Project Procurement Management Plan' : 'Create Project Procurement Management Plan'}
+        </h2>
         
         {/* Step Indicator */}
         <div className="flex items-center mb-6">
@@ -502,7 +641,10 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel }) 
             </Button>
           ) : (
             <Button onClick={handleSubmit} disabled={loading || items.length === 0}>
-              {loading ? "Creating..." : "Create PPMP"}
+              {loading 
+                ? (editingPPMP ? "Updating..." : "Creating...") 
+                : (editingPPMP ? "Update PPMP" : "Create PPMP")
+              }
             </Button>
           )}
         </div>

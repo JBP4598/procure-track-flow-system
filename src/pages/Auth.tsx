@@ -95,17 +95,17 @@ export default function Auth() {
     const passwordValidation = validatePassword(cleanPassword);
     const nameValidation = validateName(cleanFullName);
     
+    const allErrors = [
+      ...emailValidation.errors, 
+      ...passwordValidation.errors,
+      ...nameValidation.errors
+    ];
+    
     // Validate password confirmation
     if (cleanPassword !== sanitizeInput(confirmPassword)) {
       allErrors.push('Passwords do not match');
     }
-
-    const allErrors = [
-      ...emailValidation.errors, 
-      ...passwordValidation.errors, 
-      ...nameValidation.errors
-    ];
-
+    
     // Validate department selection
     if (!departmentId) {
       allErrors.push('Please select your department');

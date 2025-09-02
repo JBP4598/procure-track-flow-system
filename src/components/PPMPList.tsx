@@ -6,6 +6,7 @@ import { Eye, Edit, Download, Calendar, Users, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { PPMPDetailDialog } from '@/components/PPMPDetailDialog';
+import { PPMPEditDialog } from '@/components/PPMPEditDialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface PPMPFile {
@@ -32,6 +33,7 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
   const [loading, setLoading] = useState(true);
   const [selectedPPMP, setSelectedPPMP] = useState<PPMPFile | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -103,11 +105,14 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
       return;
     }
     
-    // TODO: Open edit dialog/wizard
-    toast({
-      title: "Edit Feature",
-      description: "PPMP editing functionality will be implemented soon.",
-    });
+    setSelectedPPMP(ppmp);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditComplete = () => {
+    setEditDialogOpen(false);
+    setSelectedPPMP(null);
+    fetchPPMPs();
   };
 
   if (loading) {
@@ -219,6 +224,13 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
         ppmpFile={selectedPPMP}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
+      />
+
+      <PPMPEditDialog
+        ppmpFile={selectedPPMP}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onComplete={handleEditComplete}
       />
     </>
   );
