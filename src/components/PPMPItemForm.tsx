@@ -4,11 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { DateInput } from '@/components/ui/date-input';
 
 interface PPMPItem {
   id?: string;
@@ -214,43 +210,21 @@ export const PPMPItemForm: React.FC<PPMPItemFormProps> = ({ item, onChange }) =>
       {/* Column 7: Advertisement/Posting of IAEB */}
       <div className="space-y-2">
         <Label>Procurement Start Date</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="w-full justify-start text-left font-normal">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {item.procurement_start_date ? format(item.procurement_start_date, "PPP") : "Select date"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={item.procurement_start_date || undefined}
-              onSelect={(date) => updateField('procurement_start_date', date)}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+        <DateInput
+          value={item.procurement_start_date}
+          onChange={(date) => updateField('procurement_start_date', date)}
+          placeholder="Enter start date (MM/DD/YYYY)"
+        />
       </div>
 
       {/* Column 8: Submission/Opening of Bids */}
       <div className="space-y-2">
         <Label>Procurement End Date</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="w-full justify-start text-left font-normal">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {item.procurement_end_date ? format(item.procurement_end_date, "PPP") : "Select date"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={item.procurement_end_date || undefined}
-              onSelect={(date) => updateField('procurement_end_date', date)}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+        <DateInput
+          value={item.procurement_end_date}
+          onChange={(date) => updateField('procurement_end_date', date)}
+          placeholder="Enter end date (MM/DD/YYYY)"
+        />
       </div>
 
       {/* Column 9: Notice of Award */}

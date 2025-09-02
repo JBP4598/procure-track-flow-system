@@ -4,17 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Plus, Trash2, Upload } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { DateInput } from '@/components/ui/date-input';
+import { Plus, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useAuth } from '@/hooks/useAuth';
-import { DepartmentSelect } from '@/components/DepartmentSelect';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { PPMPItemForm } from '@/components/PPMPItemForm';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface PPMPFile {
   id: string;
@@ -467,42 +466,20 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
 
               <div className="space-y-2">
                 <Label>Prepared Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.prepared_date ? format(formData.prepared_date, "PPP") : "Select date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={formData.prepared_date || undefined}
-                      onSelect={(date) => updateFormData('prepared_date', date)}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DateInput
+                  value={formData.prepared_date}
+                  onChange={(date) => updateFormData('prepared_date', date)}
+                  placeholder="Enter prepared date (MM/DD/YYYY)"
+                />
               </div>
 
               <div className="space-y-2">
                 <Label>Submitted Date (Optional)</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.submitted_date ? format(formData.submitted_date, "PPP") : "Select date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={formData.submitted_date || undefined}
-                      onSelect={(date) => updateFormData('submitted_date', date)}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DateInput
+                  value={formData.submitted_date}
+                  onChange={(date) => updateFormData('submitted_date', date)}
+                  placeholder="Enter submitted date (MM/DD/YYYY)"
+                />
               </div>
             </div>
 
