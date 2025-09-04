@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Download, Calendar, Users, DollarSign } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Eye, Edit, Download, Calendar, Users, DollarSign, Send, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { PPMPDetailDialog } from '@/components/PPMPDetailDialog';
 import { PPMPEditDialog } from '@/components/PPMPEditDialog';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 interface PPMPFile {
   id: string;
@@ -34,8 +36,9 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
   const [selectedPPMP, setSelectedPPMP] = useState<PPMPFile | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [statusRemarks, setStatusRemarks] = useState('');
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const fetchPPMPs = async () => {
     if (!user) return;
@@ -56,8 +59,28 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
   };
 
   useEffect(() => {
-    fetchPPMPs();
+    if (user) {
+      fetchPPMPs();
+      fetchUserRole();
+    }
   }, [user, refreshTrigger]);
+
+  const fetchUserRole = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      setUserRole(data.role);
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
 
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-PH', {
@@ -113,6 +136,57 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
     setEditDialogOpen(false);
     setSelectedPPMP(null);
     fetchPPMPs();
+  };
+
+  const handleStatusUpdate = async (ppmpId: string, newStatus: string, remarks?: string) => {
+    try {
+      const updateData: any = { 
+        status: newStatus
+      };
+
+      if (newStatus === 'submitted') {
+        updateData.submitted_date = new Date().toISOString().split('T')[0];
+        updateData.submitted_by = user?.id;
+      }
+
+      if (remarks) {
+        updateData.remarks = remarks;
+      }
+
+      const { error } = await supabase
+        .from('ppmp_files')
+        .update(updateData)
+        .eq('id', ppmpId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status Updated",
+        description: `PPMP has been ${newStatus}.`,
+      });
+
+      fetchPPMPs();
+      setStatusRemarks('');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update PPMP status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const canSubmit = (status: string) => {
+    return status === 'draft';
+  };
+
+  const canApprove = (status: string) => {
+    return (userRole === 'admin' || userRole === 'bac') && status === 'submitted';
+  };
+
+  const canReject = (status: string) => {
+    return (userRole === 'admin' || userRole === 'bac') && status === 'submitted';
   };
 
   if (loading) {
@@ -203,10 +277,107 @@ export const PPMPList: React.FC<PPMPListProps> = ({ refreshTrigger }) => {
                       variant="outline" 
                       size="sm"
                       onClick={() => handleEditPPMP(PPMPFile)}
+                      disabled={PPMPFile.status !== 'draft'}
                     >
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
                     </Button>
+                    {canSubmit(PPMPFile.status) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="default" size="sm">
+                            <Send className="h-4 w-4 mr-1" />
+                            Submit for Approval
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Submit PPMP for Approval</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to submit this PPMP for approval? Once submitted, you won't be able to edit it.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleStatusUpdate(PPMPFile.id, 'submitted')}>
+                              Submit
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    {canApprove(PPMPFile.status) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="default" size="sm">
+                            <Check className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Approve PPMP</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to approve this PPMP?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Remarks (Optional)</label>
+                            <Textarea
+                              placeholder="Add approval remarks..."
+                              value={statusRemarks}
+                              onChange={(e) => setStatusRemarks(e.target.value)}
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setStatusRemarks('')}>
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleStatusUpdate(PPMPFile.id, 'approved', statusRemarks)}>
+                              Approve
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    {canReject(PPMPFile.status) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <X className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Reject PPMP</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to reject this PPMP?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Rejection Reason</label>
+                            <Textarea
+                              placeholder="Please provide a reason for rejection..."
+                              value={statusRemarks}
+                              onChange={(e) => setStatusRemarks(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setStatusRemarks('')}>
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleStatusUpdate(PPMPFile.id, 'rejected', statusRemarks)}
+                              disabled={!statusRemarks.trim()}
+                            >
+                              Reject
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </div>
 

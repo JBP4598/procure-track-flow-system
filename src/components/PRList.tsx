@@ -4,10 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, Search, Calendar, User, FileText } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Eye, Search, Calendar, User, FileText, Check, X, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
+import { toast } from '@/hooks/use-toast';
 
 interface PurchaseRequest {
   id: string;
@@ -35,11 +38,33 @@ export const PRList: React.FC<PRListProps> = ({ refreshTrigger }) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [approvalRemarks, setApprovalRemarks] = useState('');
   const { user } = useAuth();
 
   useEffect(() => {
-    fetchPurchaseRequests();
+    if (user) {
+      fetchPurchaseRequests();
+      fetchUserRole();
+    }
   }, [user, refreshTrigger]);
+
+  const fetchUserRole = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      setUserRole(data.role);
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
 
   const fetchPurchaseRequests = async () => {
     if (!user) return;
@@ -107,6 +132,59 @@ export const PRList: React.FC<PRListProps> = ({ refreshTrigger }) => {
       default:
         return status;
     }
+  };
+
+  const handleStatusUpdate = async (prId: string, newStatus: string, remarks?: string) => {
+    try {
+      const updateData: any = { 
+        status: newStatus
+      };
+
+      if (['approved', 'rejected'].includes(newStatus)) {
+        updateData.approved_by = user?.id;
+        updateData.approved_at = new Date().toISOString();
+      }
+
+      if (remarks) {
+        updateData.remarks = remarks;
+      }
+
+      const { error } = await supabase
+        .from('purchase_requests')
+        .update(updateData)
+        .eq('id', prId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status Updated",
+        description: `Purchase request has been ${newStatus}.`,
+      });
+
+      fetchPurchaseRequests();
+      setApprovalRemarks('');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update purchase request status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const canApprove = (status: string) => {
+    return (userRole === 'admin' || userRole === 'bac') && 
+           (status === 'pending' || status === 'for_approval');
+  };
+
+  const canReject = (status: string) => {
+    return (userRole === 'admin' || userRole === 'bac') && 
+           (status === 'pending' || status === 'for_approval');
+  };
+
+  const canSubmitForApproval = (status: string) => {
+    return status === 'pending';
   };
 
   const filteredRequests = purchaseRequests.filter(pr => {
@@ -227,10 +305,94 @@ export const PRList: React.FC<PRListProps> = ({ refreshTrigger }) => {
                       )}
                     </div>
                     
-                    <Button variant="outline" size="sm">
-                      <Eye className="mr-2 h-4 w-4" />
-                      View Details
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Details
+                      </Button>
+                      {canSubmitForApproval(pr.status) && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleStatusUpdate(pr.id, 'for_approval')}
+                        >
+                          <Clock className="mr-2 h-4 w-4" />
+                          Submit for Approval
+                        </Button>
+                      )}
+                      {canApprove(pr.status) && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="default" size="sm">
+                              <Check className="mr-2 h-4 w-4" />
+                              Approve
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Approve Purchase Request</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to approve PR #{pr.pr_number}?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Remarks (Optional)</label>
+                              <Textarea
+                                placeholder="Add approval remarks..."
+                                value={approvalRemarks}
+                                onChange={(e) => setApprovalRemarks(e.target.value)}
+                              />
+                            </div>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={() => setApprovalRemarks('')}>
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleStatusUpdate(pr.id, 'approved', approvalRemarks)}>
+                                Approve
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                      {canReject(pr.status) && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <X className="mr-2 h-4 w-4" />
+                              Reject
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Reject Purchase Request</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to reject PR #{pr.pr_number}?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Rejection Reason</label>
+                              <Textarea
+                                placeholder="Please provide a reason for rejection..."
+                                value={approvalRemarks}
+                                onChange={(e) => setApprovalRemarks(e.target.value)}
+                                required
+                              />
+                            </div>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={() => setApprovalRemarks('')}>
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleStatusUpdate(pr.id, 'rejected', approvalRemarks)}
+                                disabled={!approvalRemarks.trim()}
+                              >
+                                Reject
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
