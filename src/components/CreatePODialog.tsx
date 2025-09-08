@@ -56,29 +56,45 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
 
   const fetchApprovedPRs = async () => {
     try {
-      const { data, error } = await supabase
+      // First fetch approved PRs
+      const { data: prsData, error: prError } = await supabase
         .from('purchase_requests')
-        .select(`
-          id,
-          pr_number,
-          purpose,
-          status,
-          total_amount,
-          pr_items (
-            id,
-            item_name,
-            description,
-            quantity,
-            unit,
-            unit_cost,
-            total_cost,
-            budget_category
-          )
-        `)
+        .select('id, pr_number, purpose, status, total_amount')
         .eq('status', 'approved');
 
-      if (error) throw error;
-      setApprovedPRs(data || []);
+      if (prError) throw prError;
+
+      if (!prsData || prsData.length === 0) {
+        setApprovedPRs([]);
+        return;
+      }
+
+      // Then fetch PR items for each approved PR
+      const prIds = prsData.map(pr => pr.id);
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('pr_items')
+        .select(`
+          id,
+          pr_id,
+          item_name,
+          description,
+          quantity,
+          unit,
+          unit_cost,
+          total_cost,
+          budget_category
+        `)
+        .in('pr_id', prIds);
+
+      if (itemsError) throw itemsError;
+
+      // Combine PRs with their items
+      const prsWithItems = prsData.map(pr => ({
+        ...pr,
+        pr_items: itemsData?.filter(item => item.pr_id === pr.id) || []
+      }));
+
+      setApprovedPRs(prsWithItems);
     } catch (error) {
       console.error('Error fetching approved PRs:', error);
       toast({
