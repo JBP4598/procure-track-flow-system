@@ -144,14 +144,42 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedPR || selectedItems.length === 0) return;
+    if (!selectedPR || selectedItems.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please select a PR and at least one item',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!formData.supplier_name) {
+      toast({
+        title: 'Error', 
+        description: 'Supplier name is required',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setLoading(true);
     try {
+      // Verify authentication before proceeding
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        toast({
+          title: 'Authentication Error',
+          description: 'Please log in again to create Purchase Orders',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
       const poNumber = generatePONumber();
       const totalAmount = calculateTotal();
 
-      // Create Purchase Order
+      // Create Purchase Order with explicit user ID
       const { data: poData, error: poError } = await supabase
         .from('purchase_orders')
         .insert({
@@ -162,13 +190,29 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
           terms_conditions: formData.terms_conditions,
           delivery_date: deliveryDate?.toISOString().split('T')[0],
           total_amount: totalAmount,
-          created_by: user.id,
+          created_by: currentUser.id,
           status: 'pending',
         })
         .select()
         .single();
 
-      if (poError) throw poError;
+      if (poError) {
+        console.error('PO creation error:', poError);
+        if (poError.code === '42501' || poError.message?.includes('row-level security')) {
+          toast({
+            title: 'Permission Error',
+            description: 'You need BAC or Admin role to create Purchase Orders',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: `Failed to create PO: ${poError.message}`,
+            variant: 'destructive',
+          });
+        }
+        throw poError;
+      }
 
       // Create PO Items
       const selectedPRItems = selectedPRData!.pr_items.filter(item => 

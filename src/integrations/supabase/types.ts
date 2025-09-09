@@ -700,7 +700,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string | null
-          created_by: string
+          created_by?: string
           delivery_date?: string | null
           delivery_status?:
             | Database["public"]["Enums"]["delivery_status"]
