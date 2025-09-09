@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Plus, Trash2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CalendarIcon, Plus, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +40,7 @@ interface CreatePODialogProps {
 export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchingPRs, setFetchingPRs] = useState(false);
   const [approvedPRs, setApprovedPRs] = useState<PurchaseRequest[]>([]);
   const [selectedPR, setSelectedPR] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -55,6 +57,7 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
   const { toast } = useToast();
 
   const fetchApprovedPRs = async () => {
+    setFetchingPRs(true);
     try {
       // First fetch approved PRs
       const { data: prsData, error: prError } = await supabase
@@ -102,6 +105,8 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
         description: 'Failed to load approved purchase requests',
         variant: 'destructive',
       });
+    } finally {
+      setFetchingPRs(false);
     }
   };
 
@@ -242,18 +247,30 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
           {/* Purchase Request Selection */}
           <div className="space-y-2">
             <Label htmlFor="pr_select">Select Purchase Request</Label>
-            <Select value={selectedPR} onValueChange={setSelectedPR}>
+            <Select value={selectedPR} onValueChange={setSelectedPR} disabled={fetchingPRs}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose an approved PR" />
+                <SelectValue placeholder={fetchingPRs ? "Loading approved PRs..." : "Choose an approved PR"} />
               </SelectTrigger>
               <SelectContent>
-                {approvedPRs.map((pr) => (
-                  <SelectItem key={pr.id} value={pr.id}>
-                    {pr.pr_number} - {pr.purpose} (₱{pr.total_amount.toLocaleString()})
+                {approvedPRs.length === 0 && !fetchingPRs ? (
+                  <SelectItem value="no-prs" disabled>
+                    No approved PRs available
                   </SelectItem>
-                ))}
+                ) : (
+                  approvedPRs.map((pr) => (
+                    <SelectItem key={pr.id} value={pr.id}>
+                      {pr.pr_number} - {pr.purpose} (₱{pr.total_amount.toLocaleString()})
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
+            {fetchingPRs && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Loading approved purchase requests...
+              </div>
+            )}
           </div>
 
           {/* Items Selection */}
@@ -261,25 +278,30 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
             <div className="space-y-2">
               <Label>Select Items for PO</Label>
               <div className="border rounded-lg p-4 space-y-3 max-h-60 overflow-y-auto">
-                {selectedPRData.pr_items.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-3 p-3 border rounded">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.includes(item.id)}
-                      onChange={() => toggleItemSelection(item.id)}
-                      className="h-4 w-4"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium">{item.item_name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {item.description} • {item.quantity} {item.unit} @ ₱{item.unit_cost.toLocaleString()}
-                      </div>
-                      <div className="text-sm font-medium">
-                        Total: ₱{item.total_cost.toLocaleString()}
+                {selectedPRData.pr_items.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-4">
+                    No items found in this purchase request
+                  </div>
+                ) : (
+                  selectedPRData.pr_items.map((item) => (
+                    <div key={item.id} className="flex items-start space-x-3 p-3 border rounded hover:bg-muted/50 transition-colors">
+                      <Checkbox
+                        checked={selectedItems.includes(item.id)}
+                        onCheckedChange={() => toggleItemSelection(item.id)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium">{item.item_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {item.description} • {item.quantity} {item.unit} @ ₱{item.unit_cost.toLocaleString()}
+                        </div>
+                        <div className="text-sm font-medium text-primary">
+                          Total: ₱{item.total_cost.toLocaleString()}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
               {selectedItems.length > 0 && (
                 <div className="text-right text-lg font-bold">
