@@ -846,6 +846,22 @@ export type Database = {
         Args: { _po_item_id: string; _user_id: string }
         Returns: boolean
       }
+      create_purchase_order: {
+        Args: {
+          delivery_date?: string
+          po_number: string
+          supplier_address?: string
+          supplier_contact?: string
+          supplier_name: string
+          terms_conditions?: string
+          total_amount?: number
+        }
+        Returns: string
+      }
+      debug_auth_context: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       generate_document_number: {
         Args: { prefix: string; table_name: string }
         Returns: string
