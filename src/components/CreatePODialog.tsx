@@ -164,9 +164,9 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
 
     setLoading(true);
     try {
-      // Verify authentication and session before proceeding
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (!session?.user || sessionError) {
+      // Verify authentication before proceeding
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
         toast({
           title: 'Authentication Error',
           description: 'Please log in again to create Purchase Orders',
@@ -176,49 +176,31 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
         return;
       }
 
-      const currentUser = session.user;
-      
-      // Debug authentication context
       console.log('Creating PO with user:', currentUser.id);
-      console.log('Session exists:', !!session);
-      
-      // Test the debug function to understand auth context
-      const { data: authDebug, error: debugError } = await supabase.rpc('debug_auth_context');
-      console.log('Auth debug info:', authDebug, debugError);
 
       const poNumber = generatePONumber();
       const totalAmount = calculateTotal();
 
-      // Use the secure function to create Purchase Order
-      const { data: poId, error: poError } = await supabase.rpc('create_purchase_order', {
-        po_number: poNumber,
-        supplier_name: formData.supplier_name,
-        supplier_address: formData.supplier_address || null,
-        supplier_contact: formData.supplier_contact || null,
-        terms_conditions: formData.terms_conditions || null,
-        delivery_date: deliveryDate ? deliveryDate.toISOString().split('T')[0] : null,
-        total_amount: totalAmount,
-      });
+      // Create Purchase Order with direct insertion
+      const { data: poData, error: poError } = await supabase
+        .from('purchase_orders')
+        .insert({
+          po_number: poNumber,
+          supplier_name: formData.supplier_name,
+          supplier_address: formData.supplier_address || null,
+          supplier_contact: formData.supplier_contact || null,
+          terms_conditions: formData.terms_conditions || null,
+          delivery_date: deliveryDate?.toISOString().split('T')[0] || null,
+          total_amount: totalAmount,
+          created_by: currentUser.id,
+          status: 'pending',
+        })
+        .select()
+        .single();
 
       if (poError) {
         console.error('PO creation error:', poError);
-        if (poError.message?.includes('not authenticated')) {
-          // Refresh session and try again
-          const { error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError) {
-            toast({
-              title: 'Authentication Error',
-              description: 'Session expired. Please log in again.',
-              variant: 'destructive',
-            });
-          } else {
-            toast({
-              title: 'Authentication Error',
-              description: 'Please try again after refreshing the page.',
-              variant: 'destructive',
-            });
-          }
-        } else if (poError.message?.includes('permission')) {
+        if (poError.code === '42501' || poError.message?.includes('row-level security')) {
           toast({
             title: 'Permission Error',
             description: 'You need BAC or Admin role to create Purchase Orders',
@@ -227,23 +209,11 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
         } else {
           toast({
             title: 'Error',
-            description: `Failed to create PO: ${poError.message}`,
+            description: 'Failed to create Purchase Order: ' + poError.message,
             variant: 'destructive',
           });
         }
         throw poError;
-      }
-
-      // Get the created PO data for items creation
-      const { data: poData, error: fetchError } = await supabase
-        .from('purchase_orders')
-        .select('*')
-        .eq('id', poId)
-        .single();
-
-      if (fetchError || !poData) {
-        console.error('Failed to fetch created PO:', fetchError);
-        throw new Error('Failed to fetch created Purchase Order');
       }
 
       // Create PO Items
