@@ -15,7 +15,14 @@ export const Header: React.FC = () => {
   const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
-    await signOut();
+    try {
+      await signOut();
+      window.location.href = '/auth';
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Force navigation to auth page even if signout fails
+      window.location.href = '/auth';
+    }
   };
 
   return (

@@ -129,10 +129,22 @@ export const useAuth = (): AuthContextType => {
   };
 
   const signOut = async () => {
-    // Clear security attempts on sign out
-    localStorage.removeItem('security_attempts');
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    try {
+      // Clear security attempts on sign out
+      localStorage.removeItem('security_attempts');
+      
+      // Clear local state first
+      setSession(null);
+      setUser(null);
+      
+      // Attempt to sign out - ignore errors if session is already invalid
+      await supabase.auth.signOut({ scope: 'local' });
+      
+      return { error: null };
+    } catch (error) {
+      console.error('Logout error (non-critical):', error);
+      return { error: null }; // Return no error since we cleared local state
+    }
   };
 
   return {
