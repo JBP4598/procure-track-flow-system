@@ -40,19 +40,28 @@ export const DepartmentSelect = ({ value, onValueChange, required, disabled }: D
     fetchDepartments();
   }, []);
 
+  const handleValueChange = (newValue: string) => {
+    console.log('Department selected:', newValue);
+    onValueChange(newValue);
+  };
+
   return (
     <div className="space-y-2">
       <Label htmlFor="department">Department {required && <span className="text-red-500">*</span>}</Label>
-      <Select value={value} onValueChange={onValueChange} disabled={disabled || loading}>
-        <SelectTrigger>
+      <Select value={value} onValueChange={handleValueChange} disabled={disabled || loading}>
+        <SelectTrigger id="department">
           <SelectValue placeholder={loading ? "Loading departments..." : "Select your department"} />
         </SelectTrigger>
-        <SelectContent>
-          {departments.map((dept) => (
-            <SelectItem key={dept.id} value={dept.id}>
-              {dept.name} ({dept.code})
-            </SelectItem>
-          ))}
+        <SelectContent position="popper">
+          {departments.length === 0 && !loading ? (
+            <div className="px-8 py-2 text-sm text-muted-foreground">No departments available</div>
+          ) : (
+            departments.map((dept) => (
+              <SelectItem key={dept.id} value={dept.id}>
+                {dept.name} ({dept.code})
+              </SelectItem>
+            ))
+          )}
         </SelectContent>
       </Select>
     </div>
