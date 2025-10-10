@@ -106,11 +106,6 @@ export default function Auth() {
       allErrors.push('Passwords do not match');
     }
     
-    // Validate department selection
-    if (!departmentId) {
-      allErrors.push('Please select your department');
-    }
-    
     if (allErrors.length > 0) {
       setValidationErrors(allErrors);
       setLoading(false);
@@ -292,11 +287,15 @@ export default function Auth() {
                       autoComplete="new-password"
                     />
                   </div>
-                   <DepartmentSelect
-                    value={departmentId}
-                    onValueChange={setDepartmentId}
-                    required
-                  />
+                  <div className="space-y-1">
+                    <DepartmentSelect
+                      value={departmentId}
+                      onValueChange={setDepartmentId}
+                    />
+                    <p className="text-xs text-gray-500">
+                      You can select your department now or after signing up
+                    </p>
+                  </div>
                   {validationErrors.length > 0 && (
                     <Alert variant="destructive">
                       <AlertDescription>

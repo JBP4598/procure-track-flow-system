@@ -47,7 +47,7 @@ export const DepartmentSelect = ({ value, onValueChange, required, disabled }: D
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="department">Department {required && <span className="text-red-500">*</span>}</Label>
+      <Label htmlFor="department">Department{required ? ' *' : ' (Optional)'}</Label>
       <Select value={value} onValueChange={handleValueChange} disabled={disabled || loading}>
         <SelectTrigger id="department">
           <SelectValue placeholder={loading ? "Loading departments..." : "Select your department"} />
