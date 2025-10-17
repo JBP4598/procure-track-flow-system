@@ -163,111 +163,178 @@ export function CreatePODialog({ onPOCreated }: CreatePODialogProps) {
     }
 
     setLoading(true);
-    try {
-      // Verify authentication before proceeding
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
+    
+    const attemptPOCreation = async (retryCount = 0): Promise<boolean> => {
+      try {
+        // Step 1: Refresh the session to ensure we have a valid token
+        console.log(`[PO Creation Attempt ${retryCount + 1}] Refreshing session...`);
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError) {
+          console.error('[PO Creation] Session refresh error:', refreshError);
+          throw new Error('Failed to refresh authentication session');
+        }
+
+        if (!refreshData.session) {
+          console.error('[PO Creation] No session after refresh');
+          throw new Error('No active session found');
+        }
+
+        console.log('[PO Creation] Session refreshed successfully');
+        console.log('[PO Creation] Access token present:', !!refreshData.session.access_token);
+        console.log('[PO Creation] User ID:', refreshData.session.user.id);
+
+        // Step 2: Verify we can get the current user
+        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !currentUser) {
+          console.error('[PO Creation] User verification failed:', userError);
+          throw new Error('Failed to verify user authentication');
+        }
+
+        console.log('[PO Creation] User verified:', currentUser.id);
+
+        const poNumber = generatePONumber();
+        const totalAmount = calculateTotal();
+
+        console.log('[PO Creation] Attempting to insert PO:', {
+          po_number: poNumber,
+          created_by: currentUser.id,
+          total_amount: totalAmount,
+        });
+
+        // Step 3: Create Purchase Order with the refreshed session
+        const { data: poData, error: poError } = await supabase
+          .from('purchase_orders')
+          .insert({
+            po_number: poNumber,
+            supplier_name: formData.supplier_name,
+            supplier_address: formData.supplier_address || null,
+            supplier_contact: formData.supplier_contact || null,
+            terms_conditions: formData.terms_conditions || null,
+            delivery_date: deliveryDate?.toISOString().split('T')[0] || null,
+            total_amount: totalAmount,
+            created_by: currentUser.id,
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (poError) {
+          console.error('[PO Creation] Database error:', {
+            code: poError.code,
+            message: poError.message,
+            details: poError.details,
+            hint: poError.hint,
+          });
+
+          // If it's an RLS error and we haven't retried yet, try again
+          if ((poError.code === '42501' || poError.message?.includes('row-level security')) && retryCount === 0) {
+            console.log('[PO Creation] RLS error detected, retrying with fresh session...');
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            return attemptPOCreation(retryCount + 1);
+          }
+
+          if (poError.code === '42501' || poError.message?.includes('row-level security')) {
+            toast({
+              title: 'Permission Error',
+              description: 'You need BAC or Admin role to create Purchase Orders. Please contact your administrator.',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Error',
+              description: 'Failed to create Purchase Order: ' + poError.message,
+              variant: 'destructive',
+            });
+          }
+          throw poError;
+        }
+
+        console.log('[PO Creation] PO created successfully:', poData.id);
+
+        // Create PO Items
+        const selectedPRItems = selectedPRData!.pr_items.filter(item => 
+          selectedItems.includes(item.id)
+        );
+
+        const poItemsData = selectedPRItems.map(item => ({
+          po_id: poData.id,
+          pr_item_id: item.id,
+          quantity: item.quantity,
+          unit_cost: item.unit_cost,
+          total_cost: item.total_cost,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('po_items')
+          .insert(poItemsData);
+
+        if (itemsError) {
+          console.error('[PO Creation] Failed to insert PO items:', itemsError);
+          throw itemsError;
+        }
+
+        // Update PR status to 'awarded'
+        const { error: updateError } = await supabase
+          .from('purchase_requests')
+          .update({ status: 'awarded' })
+          .eq('id', selectedPR);
+
+        if (updateError) {
+          console.error('[PO Creation] Failed to update PR status:', updateError);
+          throw updateError;
+        }
+
+        console.log('[PO Creation] Process completed successfully');
+
         toast({
-          title: 'Authentication Error',
-          description: 'Please log in again to create Purchase Orders',
+          title: 'Success',
+          description: `Purchase Order ${poNumber} created successfully`,
+        });
+
+        setOpen(false);
+        onPOCreated();
+        
+        // Reset form
+        setSelectedPR('');
+        setSelectedItems([]);
+        setDeliveryDate(undefined);
+        setFormData({
+          supplier_name: '',
+          supplier_address: '',
+          supplier_contact: '',
+          terms_conditions: '',
+        });
+
+        return true;
+      } catch (error) {
+        console.error(`[PO Creation Attempt ${retryCount + 1}] Error:`, error);
+        if (retryCount === 0) {
+          return false; // Will trigger retry
+        }
+        throw error; // Re-throw on second attempt
+      }
+    };
+
+    try {
+      const success = await attemptPOCreation();
+      if (!success) {
+        // First attempt failed, try one more time
+        console.log('[PO Creation] First attempt failed, retrying...');
+        await attemptPOCreation(1);
+      }
+    } catch (error) {
+      console.error('[PO Creation] All attempts failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create purchase order';
+      
+      if (!errorMessage.includes('Permission Error') && !errorMessage.includes('BAC or Admin')) {
+        toast({
+          title: 'Error',
+          description: errorMessage,
           variant: 'destructive',
         });
-        setLoading(false);
-        return;
       }
-
-      console.log('Creating PO with user:', currentUser.id);
-
-      const poNumber = generatePONumber();
-      const totalAmount = calculateTotal();
-
-      // Create Purchase Order with direct insertion
-      const { data: poData, error: poError } = await supabase
-        .from('purchase_orders')
-        .insert({
-          po_number: poNumber,
-          supplier_name: formData.supplier_name,
-          supplier_address: formData.supplier_address || null,
-          supplier_contact: formData.supplier_contact || null,
-          terms_conditions: formData.terms_conditions || null,
-          delivery_date: deliveryDate?.toISOString().split('T')[0] || null,
-          total_amount: totalAmount,
-          created_by: currentUser.id,
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (poError) {
-        console.error('PO creation error:', poError);
-        if (poError.code === '42501' || poError.message?.includes('row-level security')) {
-          toast({
-            title: 'Permission Error',
-            description: 'You need BAC or Admin role to create Purchase Orders',
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Error',
-            description: 'Failed to create Purchase Order: ' + poError.message,
-            variant: 'destructive',
-          });
-        }
-        throw poError;
-      }
-
-      // Create PO Items
-      const selectedPRItems = selectedPRData!.pr_items.filter(item => 
-        selectedItems.includes(item.id)
-      );
-
-      const poItemsData = selectedPRItems.map(item => ({
-        po_id: poData.id,
-        pr_item_id: item.id,
-        quantity: item.quantity,
-        unit_cost: item.unit_cost,
-        total_cost: item.total_cost,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('po_items')
-        .insert(poItemsData);
-
-      if (itemsError) throw itemsError;
-
-      // Update PR status to 'awarded'
-      const { error: updateError } = await supabase
-        .from('purchase_requests')
-        .update({ status: 'awarded' })
-        .eq('id', selectedPR);
-
-      if (updateError) throw updateError;
-
-      toast({
-        title: 'Success',
-        description: `Purchase Order ${poNumber} created successfully`,
-      });
-
-      setOpen(false);
-      onPOCreated();
-      
-      // Reset form
-      setSelectedPR('');
-      setSelectedItems([]);
-      setDeliveryDate(undefined);
-      setFormData({
-        supplier_name: '',
-        supplier_address: '',
-        supplier_contact: '',
-        terms_conditions: '',
-      });
-    } catch (error) {
-      console.error('Error creating PO:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create purchase order',
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }
