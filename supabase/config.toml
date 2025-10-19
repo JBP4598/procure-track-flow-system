@@ -1,1 +1,4 @@
 project_id = "ekctfpcglgphystvzwwv"
+
+[functions.create-purchase-order]
+verify_jwt = true
