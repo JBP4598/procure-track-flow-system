@@ -16,6 +16,10 @@ interface InspectionReport {
   overall_result: 'accepted' | 'rejected' | 'requires_reinspection';
   remarks: string | null;
   created_at: string;
+  is_emergency_purchase?: boolean;
+  emergency_supplier_name?: string;
+  emergency_amount?: number;
+  emergency_reference?: string;
   inspector: {
     full_name: string;
   };
@@ -23,7 +27,7 @@ interface InspectionReport {
     po_number: string;
     supplier_name: string;
     total_amount: number;
-  };
+  } | null;
 }
 
 interface IARListProps {
@@ -56,6 +60,10 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
           overall_result,
           remarks,
           created_at,
+          is_emergency_purchase,
+          emergency_supplier_name,
+          emergency_amount,
+          emergency_reference,
           inspector:profiles!inspection_reports_inspector_id_fkey (
             full_name
           ),
@@ -84,8 +92,9 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
 
   const filteredIARs = iars.filter(iar =>
     iar.iar_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    iar.purchase_order.po_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    iar.purchase_order.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (iar.purchase_order?.po_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (iar.purchase_order?.supplier_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (iar.emergency_supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
     iar.inspector.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -171,29 +180,60 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
                             {iar.iar_number}
                           </h3>
                           {getResultBadge(iar.overall_result)}
+                          {iar.is_emergency_purchase && (
+                            <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                              Emergency Purchase
+                            </Badge>
+                          )}
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4" />
-                            <span>PO: {iar.purchase_order.po_number}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            <span>Inspected: {formatDate(iar.inspection_date)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            <span>Inspector: {iar.inspector.full_name}</span>
-                          </div>
-                          <div>
-                            <span className="font-medium">Supplier:</span> {iar.purchase_order.supplier_name}
-                          </div>
+                          {iar.is_emergency_purchase ? (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                <span>Ref: {iar.emergency_reference}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                <span>Inspected: {formatDate(iar.inspection_date)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                <span>Inspector: {iar.inspector.full_name}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium">Supplier:</span> {iar.emergency_supplier_name}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                <span>PO: {iar.purchase_order?.po_number}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                <span>Inspected: {formatDate(iar.inspection_date)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                <span>Inspector: {iar.inspector.full_name}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium">Supplier:</span> {iar.purchase_order?.supplier_name}
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         <div className="mt-3">
-                          <span className="font-medium text-sm">PO Amount:</span>{' '}
-                          <span className="text-sm">{formatCurrency(iar.purchase_order.total_amount)}</span>
+                          <span className="font-medium text-sm">
+                            {iar.is_emergency_purchase ? 'Purchase Amount:' : 'PO Amount:'}
+                          </span>{' '}
+                          <span className="text-sm">
+                            {formatCurrency(iar.is_emergency_purchase ? iar.emergency_amount || 0 : iar.purchase_order?.total_amount || 0)}
+                          </span>
                         </div>
 
                         {iar.remarks && (

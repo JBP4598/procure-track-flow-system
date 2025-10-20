@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { Plus, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +19,7 @@ interface PurchaseOrder {
   supplier_name: string;
   delivery_date: string;
   total_amount: number;
+  status: string;
 }
 
 interface CreateIARDialogProps {
@@ -28,10 +31,14 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
   const [loading, setLoading] = useState(false);
   const [availablePOs, setAvailablePOs] = useState<PurchaseOrder[]>([]);
   const [selectedPO, setSelectedPO] = useState('');
+  const [isEmergencyPurchase, setIsEmergencyPurchase] = useState(false);
   const [formData, setFormData] = useState({
     iar_number: '',
     inspection_date: new Date().toISOString().split('T')[0],
     remarks: '',
+    emergency_supplier_name: '',
+    emergency_amount: '',
+    emergency_reference: '',
   });
   const [poItems, setPOItems] = useState<any[]>([]);
   const [iarItems, setIARItems] = useState<any[]>([]);
@@ -64,8 +71,7 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
     try {
       const { data, error } = await supabase
         .from('purchase_orders')
-        .select('id, po_number, supplier_name, delivery_date, total_amount')
-        .eq('status', 'approved')
+        .select('id, po_number, supplier_name, delivery_date, total_amount, status')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -128,7 +134,16 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedPO) return;
+    if (!user) return;
+    if (!isEmergencyPurchase && !selectedPO) return;
+    if (isEmergencyPurchase && (!formData.emergency_supplier_name || !formData.emergency_amount || !formData.emergency_reference)) {
+      toast({
+        title: "Error",
+        description: "Please fill in all emergency purchase fields.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -138,47 +153,60 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
       const overallResult = hasRejected ? (hasAccepted ? 'requires_reinspection' : 'rejected') : 'accepted';
 
       // Create inspection report
+      const iarData: any = {
+        iar_number: formData.iar_number,
+        inspector_id: user.id,
+        inspection_date: formData.inspection_date,
+        overall_result: overallResult,
+        remarks: formData.remarks,
+        is_emergency_purchase: isEmergencyPurchase,
+      };
+
+      if (isEmergencyPurchase) {
+        iarData.emergency_supplier_name = formData.emergency_supplier_name;
+        iarData.emergency_amount = parseFloat(formData.emergency_amount);
+        iarData.emergency_reference = formData.emergency_reference;
+        iarData.po_id = null;
+      } else {
+        iarData.po_id = selectedPO;
+      }
+
       const { data: iar, error: iarError } = await supabase
         .from('inspection_reports')
-        .insert({
-          iar_number: formData.iar_number,
-          po_id: selectedPO,
-          inspector_id: user.id,
-          inspection_date: formData.inspection_date,
-          overall_result: overallResult,
-          remarks: formData.remarks,
-        })
+        .insert(iarData)
         .select()
         .single();
 
       if (iarError) throw iarError;
 
-      // Create IAR items
-      const iarItemsData = iarItems.map(item => ({
-        ...item,
-        iar_id: iar.id,
-      }));
+      // Create IAR items (only for PO-based inspections)
+      if (!isEmergencyPurchase && iarItems.length > 0) {
+        const iarItemsData = iarItems.map(item => ({
+          ...item,
+          iar_id: iar.id,
+        }));
 
-      const { error: itemsError } = await supabase
-        .from('iar_items')
-        .insert(iarItemsData);
+        const { error: itemsError } = await supabase
+          .from('iar_items')
+          .insert(iarItemsData);
 
-      if (itemsError) throw itemsError;
+        if (itemsError) throw itemsError;
 
-      // Update PO items delivery status
-      for (const item of iarItems) {
-        const poItem = poItems.find(po => po.id === item.po_item_id);
-        if (poItem) {
-          const newDeliveredQuantity = (poItem.delivered_quantity || 0) + item.accepted_quantity;
-          const newRemainingQuantity = poItem.quantity - newDeliveredQuantity;
-          
-          await supabase
-            .from('po_items')
-            .update({
-              delivered_quantity: newDeliveredQuantity,
-              remaining_quantity: newRemainingQuantity,
-            })
-            .eq('id', item.po_item_id);
+        // Update PO items delivery status
+        for (const item of iarItems) {
+          const poItem = poItems.find(po => po.id === item.po_item_id);
+          if (poItem) {
+            const newDeliveredQuantity = (poItem.delivered_quantity || 0) + item.accepted_quantity;
+            const newRemainingQuantity = poItem.quantity - newDeliveredQuantity;
+            
+            await supabase
+              .from('po_items')
+              .update({
+                delivered_quantity: newDeliveredQuantity,
+                remaining_quantity: newRemainingQuantity,
+              })
+              .eq('id', item.po_item_id);
+          }
         }
       }
 
@@ -207,8 +235,12 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
       iar_number: '',
       inspection_date: new Date().toISOString().split('T')[0],
       remarks: '',
+      emergency_supplier_name: '',
+      emergency_amount: '',
+      emergency_reference: '',
     });
     setSelectedPO('');
+    setIsEmergencyPurchase(false);
     setPOItems([]);
     setIARItems([]);
   };
@@ -254,28 +286,84 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="po_id">Purchase Order</Label>
-            <Select value={selectedPO} onValueChange={setSelectedPO} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a purchase order to inspect" />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePOs.map((po) => (
-                  <SelectItem key={po.id} value={po.id}>
-                    {po.po_number} - {po.supplier_name} (₱{po.total_amount.toLocaleString()})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center space-x-2 p-4 bg-muted rounded-lg">
+            <Switch
+              id="emergency-purchase"
+              checked={isEmergencyPurchase}
+              onCheckedChange={setIsEmergencyPurchase}
+            />
+            <Label htmlFor="emergency-purchase" className="cursor-pointer">
+              This is an emergency purchase (no PO required)
+            </Label>
           </div>
 
-          {poItems.length > 0 && (
-            <IARItemsForm
-              poItems={poItems}
-              iarItems={iarItems}
-              onItemsChange={handleIARItemsChange}
-            />
+          {!isEmergencyPurchase ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="po_id">Purchase Order</Label>
+                <Select value={selectedPO} onValueChange={setSelectedPO} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a purchase order to inspect" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePOs.map((po) => (
+                      <SelectItem key={po.id} value={po.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{po.po_number} - {po.supplier_name} (₱{po.total_amount.toLocaleString()})</span>
+                          <Badge variant={po.status === 'approved' ? 'default' : 'secondary'} className="text-xs">
+                            {po.status}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {poItems.length > 0 && (
+                <IARItemsForm
+                  poItems={poItems}
+                  iarItems={iarItems}
+                  onItemsChange={handleIARItemsChange}
+                />
+              )}
+            </>
+          ) : (
+            <div className="space-y-4 p-4 border rounded-lg">
+              <h3 className="font-semibold">Emergency Purchase Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_supplier_name">Supplier Name</Label>
+                  <Input
+                    id="emergency_supplier_name"
+                    value={formData.emergency_supplier_name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, emergency_supplier_name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_amount">Purchase Amount (₱)</Label>
+                  <Input
+                    id="emergency_amount"
+                    type="number"
+                    step="0.01"
+                    value={formData.emergency_amount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, emergency_amount: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="emergency_reference">Reference Number</Label>
+                  <Input
+                    id="emergency_reference"
+                    value={formData.emergency_reference}
+                    onChange={(e) => setFormData(prev => ({ ...prev, emergency_reference: e.target.value }))}
+                    placeholder="e.g., Invoice number, receipt number, etc."
+                    required
+                  />
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="space-y-2">
@@ -298,7 +386,7 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !selectedPO}>
+            <Button type="submit" disabled={loading || (!isEmergencyPurchase && !selectedPO)}>
               {loading ? 'Creating...' : 'Create IAR'}
             </Button>
           </div>

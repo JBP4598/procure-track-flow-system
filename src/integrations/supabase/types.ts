@@ -289,37 +289,49 @@ export type Database = {
       inspection_reports: {
         Row: {
           created_at: string | null
+          emergency_amount: number | null
+          emergency_reference: string | null
+          emergency_supplier_name: string | null
           iar_number: string
           id: string
           image_attachments: string[] | null
           inspection_date: string
           inspector_id: string
+          is_emergency_purchase: boolean | null
           overall_result: Database["public"]["Enums"]["inspection_result"]
-          po_id: string
+          po_id: string | null
           remarks: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          emergency_amount?: number | null
+          emergency_reference?: string | null
+          emergency_supplier_name?: string | null
           iar_number: string
           id?: string
           image_attachments?: string[] | null
           inspection_date: string
           inspector_id: string
+          is_emergency_purchase?: boolean | null
           overall_result: Database["public"]["Enums"]["inspection_result"]
-          po_id: string
+          po_id?: string | null
           remarks?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          emergency_amount?: number | null
+          emergency_reference?: string | null
+          emergency_supplier_name?: string | null
           iar_number?: string
           id?: string
           image_attachments?: string[] | null
           inspection_date?: string
           inspector_id?: string
+          is_emergency_purchase?: boolean | null
           overall_result?: Database["public"]["Enums"]["inspection_result"]
-          po_id?: string
+          po_id?: string | null
           remarks?: string | null
           updated_at?: string | null
         }

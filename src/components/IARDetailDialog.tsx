@@ -36,6 +36,10 @@ interface InspectionReport {
   overall_result: 'accepted' | 'rejected' | 'requires_reinspection';
   remarks: string | null;
   created_at: string;
+  is_emergency_purchase?: boolean;
+  emergency_supplier_name?: string;
+  emergency_amount?: number;
+  emergency_reference?: string;
   inspector: {
     full_name: string;
   };
@@ -43,7 +47,7 @@ interface InspectionReport {
     po_number: string;
     supplier_name: string;
     total_amount: number;
-  };
+  } | null;
   iar_items?: IARItem[];
 }
 
@@ -96,6 +100,11 @@ export const IARDetailDialog: React.FC<IARDetailDialogProps> = ({
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Inspection Report Details - {iar.iar_number}
+            {iar.is_emergency_purchase && (
+              <Badge variant="secondary" className="bg-orange-100 text-orange-800 ml-2">
+                Emergency Purchase
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             Complete details of the inspection report and all inspected items
@@ -114,11 +123,19 @@ export const IARDetailDialog: React.FC<IARDetailDialogProps> = ({
                 <span className="font-medium">IAR Number:</span>
                 <span>{iar.iar_number}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">PO Number:</span>
-                <span>{iar.purchase_order.po_number}</span>
-              </div>
+              {iar.is_emergency_purchase ? (
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Reference:</span>
+                  <span>{iar.emergency_reference}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">PO Number:</span>
+                  <span>{iar.purchase_order?.po_number}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">Inspection Date:</span>
@@ -135,26 +152,40 @@ export const IARDetailDialog: React.FC<IARDetailDialogProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-medium">Supplier:</span>
-                <span>{iar.purchase_order.supplier_name}</span>
+                <span>{iar.is_emergency_purchase ? iar.emergency_supplier_name : iar.purchase_order?.supplier_name}</span>
               </div>
             </CardContent>
           </Card>
 
-          {/* Purchase Order Information */}
+          {/* Purchase Order or Emergency Purchase Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Purchase Order Information</CardTitle>
+              <CardTitle className="text-lg">
+                {iar.is_emergency_purchase ? 'Emergency Purchase Information' : 'Purchase Order Information'}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <span className="font-medium text-sm text-muted-foreground">PO Total Amount</span>
-                  <p className="text-lg font-semibold">{formatCurrency(iar.purchase_order.total_amount)}</p>
+                  <span className="font-medium text-sm text-muted-foreground">
+                    {iar.is_emergency_purchase ? 'Purchase Amount' : 'PO Total Amount'}
+                  </span>
+                  <p className="text-lg font-semibold">
+                    {formatCurrency(iar.is_emergency_purchase ? iar.emergency_amount || 0 : iar.purchase_order?.total_amount || 0)}
+                  </p>
                 </div>
                 <div>
                   <span className="font-medium text-sm text-muted-foreground">Supplier</span>
-                  <p className="text-lg">{iar.purchase_order.supplier_name}</p>
+                  <p className="text-lg">
+                    {iar.is_emergency_purchase ? iar.emergency_supplier_name : iar.purchase_order?.supplier_name}
+                  </p>
                 </div>
+                {iar.is_emergency_purchase && (
+                  <div>
+                    <span className="font-medium text-sm text-muted-foreground">Reference Number</span>
+                    <p className="text-lg">{iar.emergency_reference}</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
