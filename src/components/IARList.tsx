@@ -238,18 +238,53 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
               {filteredIARs.map((iar) => (
                 <Card key={iar.id} className="border-l-4 border-l-blue-500">
                   <CardContent className="p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {iar.iar_number}
-                          </h3>
-                          {getResultBadge(iar.overall_result)}
-                          {iar.is_emergency_purchase && (
-                            <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                              Emergency Purchase
-                            </Badge>
-                          )}
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {iar.iar_number}
+                            </h3>
+                            {getResultBadge(iar.overall_result)}
+                            {iar.is_emergency_purchase && (
+                              <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                                Emergency Purchase
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center gap-2"
+                              onClick={() => setSelectedIAR(iar)}
+                            >
+                              <Eye className="h-4 w-4" />
+                              View
+                            </Button>
+                            {isAdmin && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex items-center gap-2"
+                                  onClick={() => setEditingIAR(iar)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="flex items-center gap-2"
+                                  onClick={() => setDeletingIAR(iar)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
@@ -307,40 +342,6 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
                               <span className="font-medium">Remarks:</span> {iar.remarks}
                             </p>
                           </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                          onClick={() => setSelectedIAR(iar)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          View Details
-                        </Button>
-                        {isAdmin && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex items-center gap-2"
-                              onClick={() => setEditingIAR(iar)}
-                            >
-                              <Edit className="h-4 w-4" />
-                              Edit
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="flex items-center gap-2"
-                              onClick={() => setDeletingIAR(iar)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
-                            </Button>
-                          </>
                         )}
                       </div>
                     </div>
