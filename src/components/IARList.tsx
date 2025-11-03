@@ -3,11 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Eye, FileText, Calendar, User } from 'lucide-react';
+import { Search, Eye, FileText, Calendar, User, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { IARDetailDialog } from './IARDetailDialog';
+import { EditIARDialog } from './EditIARDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface InspectionReport {
   id: string;
@@ -39,12 +50,29 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIAR, setSelectedIAR] = useState<InspectionReport | null>(null);
+  const [editingIAR, setEditingIAR] = useState<InspectionReport | null>(null);
+  const [deletingIAR, setDeletingIAR] = useState<InspectionReport | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
     fetchIARs();
+    checkAdminStatus();
   }, [user, refreshTrigger]);
+
+  const checkAdminStatus = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+    
+    setIsAdmin(!!data);
+  };
 
   const fetchIARs = async () => {
     if (!user) return;
@@ -125,6 +153,43 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  const handleDelete = async () => {
+    if (!deletingIAR) return;
+
+    try {
+      // Delete IAR items first (if any)
+      const { error: itemsError } = await supabase
+        .from('iar_items')
+        .delete()
+        .eq('iar_id', deletingIAR.id);
+
+      if (itemsError) throw itemsError;
+
+      // Delete the IAR
+      const { error: iarError } = await supabase
+        .from('inspection_reports')
+        .delete()
+        .eq('id', deletingIAR.id);
+
+      if (iarError) throw iarError;
+
+      toast({
+        title: "Success",
+        description: "Inspection report deleted successfully.",
+      });
+
+      setDeletingIAR(null);
+      fetchIARs();
+    } catch (error) {
+      console.error('Error deleting IAR:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete inspection report.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
@@ -255,6 +320,28 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
                           <Eye className="h-4 w-4" />
                           View Details
                         </Button>
+                        {isAdmin && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center gap-2"
+                              onClick={() => setEditingIAR(iar)}
+                            >
+                              <Edit className="h-4 w-4" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="flex items-center gap-2"
+                              onClick={() => setDeletingIAR(iar)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -277,6 +364,31 @@ export const IARList: React.FC<IARListProps> = ({ refreshTrigger }) => {
         onOpenChange={(open) => !open && setSelectedIAR(null)}
         iar={selectedIAR}
       />
+
+      <EditIARDialog
+        open={!!editingIAR}
+        onOpenChange={(open) => !open && setEditingIAR(null)}
+        iar={editingIAR}
+        onIARUpdated={fetchIARs}
+      />
+
+      <AlertDialog open={!!deletingIAR} onOpenChange={(open) => !open && setDeletingIAR(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the inspection report <strong>{deletingIAR?.iar_number}</strong> and all its items.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
