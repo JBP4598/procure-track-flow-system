@@ -47,26 +47,29 @@ export const IARItemsForm: React.FC<IARItemsFormProps> = ({
       [field]: value,
     };
 
+    const item = updatedItems[index];
+
+    // Auto-calculate accepted quantity when inspected quantity changes
+    if (field === 'inspected_quantity') {
+      item.accepted_quantity = value;
+      item.rejected_quantity = 0;
+    }
+
+    // Auto-calculate accepted quantity when rejected quantity changes
+    if (field === 'rejected_quantity') {
+      const rejectedQty = Math.min(value, item.inspected_quantity);
+      item.rejected_quantity = rejectedQty;
+      item.accepted_quantity = item.inspected_quantity - rejectedQty;
+    }
+
     // Auto-calculate result based on quantities
-    if (field === 'accepted_quantity' || field === 'rejected_quantity') {
-      const item = updatedItems[index];
-      const totalProcessed = item.accepted_quantity + item.rejected_quantity;
-      
+    if (field === 'inspected_quantity' || field === 'accepted_quantity' || field === 'rejected_quantity') {
       if (item.rejected_quantity > 0 && item.accepted_quantity > 0) {
         item.result = 'requires_reinspection';
       } else if (item.rejected_quantity > 0) {
         item.result = 'rejected';
       } else {
         item.result = 'accepted';
-      }
-
-      // Ensure quantities don't exceed inspected quantity
-      if (totalProcessed > item.inspected_quantity) {
-        if (field === 'accepted_quantity') {
-          item.accepted_quantity = item.inspected_quantity - item.rejected_quantity;
-        } else {
-          item.rejected_quantity = item.inspected_quantity - item.accepted_quantity;
-        }
       }
     }
 

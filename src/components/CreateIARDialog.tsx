@@ -112,14 +112,17 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
       setPOItems(data || []);
       
       // Initialize IAR items based on PO items
-      const initialIARItems = (data || []).map(item => ({
-        po_item_id: item.id,
-        inspected_quantity: item.remaining_quantity || item.quantity,
-        accepted_quantity: 0,
-        rejected_quantity: 0,
-        result: 'accepted' as const,
-        remarks: '',
-      }));
+      const initialIARItems = (data || []).map(item => {
+        const inspectedQty = item.remaining_quantity || item.quantity;
+        return {
+          po_item_id: item.id,
+          inspected_quantity: inspectedQty,
+          accepted_quantity: inspectedQty,
+          rejected_quantity: 0,
+          result: 'accepted' as const,
+          remarks: '',
+        };
+      });
       
       setIARItems(initialIARItems);
     } catch (error) {
@@ -249,6 +252,9 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
     setIARItems(updatedItems);
   };
 
+  // Check if at least one item has accepted quantity > 0
+  const hasAcceptedItems = isEmergencyPurchase || iarItems.some(item => item.accepted_quantity > 0);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -377,6 +383,14 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
             />
           </div>
 
+          {!isEmergencyPurchase && iarItems.length > 0 && !hasAcceptedItems && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+              <p className="text-sm text-yellow-800">
+                ⚠️ At least one item must have an accepted quantity greater than 0
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-end space-x-2">
             <Button
               type="button"
@@ -386,7 +400,7 @@ export const CreateIARDialog: React.FC<CreateIARDialogProps> = ({ onIARCreated }
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || (!isEmergencyPurchase && !selectedPO)}>
+            <Button type="submit" disabled={loading || (!isEmergencyPurchase && !selectedPO) || !hasAcceptedItems}>
               {loading ? 'Creating...' : 'Create IAR'}
             </Button>
           </div>
