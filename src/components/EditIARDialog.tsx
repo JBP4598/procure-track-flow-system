@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { EditIARItemsForm } from '@/components/EditIARItemsForm';
 
 interface InspectionReport {
   id: string;
@@ -36,6 +37,8 @@ export const EditIARDialog: React.FC<EditIARDialogProps> = ({
   onIARUpdated,
 }) => {
   const [loading, setLoading] = useState(false);
+  const [iarItems, setIARItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [formData, setFormData] = useState({
     iar_number: '',
     inspection_date: '',
@@ -47,6 +50,55 @@ export const EditIARDialog: React.FC<EditIARDialogProps> = ({
   });
   
   const { toast } = useToast();
+
+  // Fetch IAR items when dialog opens
+  useEffect(() => {
+    const fetchIARItems = async () => {
+      if (!iar || iar.is_emergency_purchase) return;
+
+      setLoadingItems(true);
+      try {
+        const { data, error } = await supabase
+          .from('iar_items')
+          .select(`
+            id,
+            inspected_quantity,
+            accepted_quantity,
+            rejected_quantity,
+            result,
+            remarks,
+            po_item_id,
+            po_items (
+              id,
+              quantity,
+              unit_cost,
+              pr_items (
+                item_name,
+                description,
+                unit
+              )
+            )
+          `)
+          .eq('iar_id', iar.id);
+
+        if (error) throw error;
+        setIARItems(data || []);
+      } catch (error) {
+        console.error('Error fetching IAR items:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load IAR items.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingItems(false);
+      }
+    };
+
+    if (open) {
+      fetchIARItems();
+    }
+  }, [iar, open, toast]);
 
   useEffect(() => {
     if (iar) {
@@ -66,6 +118,18 @@ export const EditIARDialog: React.FC<EditIARDialogProps> = ({
     e.preventDefault();
     if (!iar) return;
 
+    // Validate that at least one item has accepted quantity > 0 (for non-emergency purchases)
+    if (!iar.is_emergency_purchase && 
+        iarItems.length > 0 && 
+        !iarItems.some(item => item.accepted_quantity > 0)) {
+      toast({
+        title: "Validation Error",
+        description: "At least one item must have an accepted quantity greater than 0.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const updateData: any = {
@@ -82,16 +146,39 @@ export const EditIARDialog: React.FC<EditIARDialogProps> = ({
         updateData.emergency_reference = formData.emergency_reference;
       }
 
-      const { error } = await supabase
+      const { error: iarError } = await supabase
         .from('inspection_reports')
         .update(updateData)
         .eq('id', iar.id);
 
-      if (error) throw error;
+      if (iarError) throw iarError;
+
+      // Update IAR items (only for non-emergency purchases)
+      if (!iar.is_emergency_purchase && iarItems.length > 0) {
+        const updatePromises = iarItems.map(item => 
+          supabase
+            .from('iar_items')
+            .update({
+              inspected_quantity: item.inspected_quantity,
+              accepted_quantity: item.accepted_quantity,
+              rejected_quantity: item.rejected_quantity,
+              result: item.result,
+              remarks: item.remarks || null,
+            })
+            .eq('id', item.id)
+        );
+
+        const results = await Promise.all(updatePromises);
+        const itemErrors = results.filter(r => r.error);
+        
+        if (itemErrors.length > 0) {
+          throw new Error('Failed to update some IAR items');
+        }
+      }
 
       toast({
         title: "Success",
-        description: "Inspection report updated successfully.",
+        description: "Inspection report and items updated successfully.",
       });
 
       onOpenChange(false);
@@ -107,6 +194,9 @@ export const EditIARDialog: React.FC<EditIARDialogProps> = ({
       setLoading(false);
     }
   };
+
+  // Check if at least one item has accepted quantity > 0
+  const hasAcceptedItems = !iar || iar.is_emergency_purchase || iarItems.length === 0 || iarItems.some(item => item.accepted_quantity > 0);
 
   if (!iar) return null;
 
@@ -215,6 +305,42 @@ export const EditIARDialog: React.FC<EditIARDialogProps> = ({
             />
           </div>
 
+          {/* IAR Items Section - Only for non-emergency purchases */}
+          {!iar.is_emergency_purchase && (
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Inspection Items</h3>
+                {iarItems.length > 0 && (
+                  <Badge variant="outline">{iarItems.length} items</Badge>
+                )}
+              </div>
+              
+              {loadingItems ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Loading items...
+                </div>
+              ) : iarItems.length > 0 ? (
+                <EditIARItemsForm
+                  iarItems={iarItems}
+                  onItemsChange={setIARItems}
+                />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No items found for this inspection report.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Validation warning for accepted quantities */}
+          {!iar.is_emergency_purchase && iarItems.length > 0 && !hasAcceptedItems && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+              <p className="text-sm text-yellow-800">
+                ⚠️ At least one item must have an accepted quantity greater than 0
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-end space-x-2">
             <Button
               type="button"
@@ -224,7 +350,7 @@ export const EditIARDialog: React.FC<EditIARDialogProps> = ({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !hasAcceptedItems}>
               {loading ? 'Updating...' : 'Update IAR'}
             </Button>
           </div>
