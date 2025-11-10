@@ -1,18 +1,43 @@
-import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/integrations/supabase/types';
+import { Eye, Pencil, CheckCircle } from 'lucide-react';
+import { format } from 'date-fns';
+import { MarkDVPaidDialog } from './MarkDVPaidDialog';
+import { DVDetailDialog } from './DVDetailDialog';
+import { EditDVDialog } from './EditDVDialog';
 
 type DisbursementVoucher = any;
 
 export const DVList: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  const [selectedDV, setSelectedDV] = useState<DisbursementVoucher | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [markPaidDialogOpen, setMarkPaidDialogOpen] = useState(false);
+
+  // Fetch user roles to check permissions
+  const { data: userRoles } = useQuery({
+    queryKey: ['user-roles'],
+    queryFn: async () => {
+      const user = await supabase.auth.getUser();
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.data.user?.id);
+      return data?.map(r => r.role) || [];
+    },
+  });
+
+  const isAccountantOrAdmin = userRoles?.some(
+    r => r === 'accountant' || r === 'admin'
+  );
 
   const { data: dvs, isLoading } = useQuery({
     queryKey: ['disbursement-vouchers'],
@@ -27,44 +52,15 @@ export const DVList: React.FC = () => {
           ),
           created_by_profile:created_by (
             full_name
+          ),
+          processed_by_profile:processed_by (
+            full_name
           )
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as DisbursementVoucher[];
-    },
-  });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const updates: any = { status };
-      
-      if (status === 'processed') {
-        updates.processed_at = new Date().toISOString();
-        updates.processed_by = (await supabase.auth.getUser()).data.user?.id;
-      }
-
-      const { error } = await supabase
-        .from('disbursement_vouchers')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'DV status updated successfully',
-      });
-      queryClient.invalidateQueries({ queryKey: ['disbursement-vouchers'] });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: `Failed to update status: ${error.message}`,
-        variant: 'destructive',
-      });
     },
   });
 
@@ -96,6 +92,7 @@ export const DVList: React.FC = () => {
             <TableHead>Payee</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Payment Method</TableHead>
+            <TableHead>Payment Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Created By</TableHead>
             <TableHead>Actions</TableHead>
@@ -113,33 +110,95 @@ export const DVList: React.FC = () => {
                 {dv.payment_method?.replace('_', ' ')}
                 {dv.check_number && ` (${dv.check_number})`}
               </TableCell>
+              <TableCell>
+                {dv.payment_date ? (
+                  format(new Date(dv.payment_date), 'MMM dd, yyyy')
+                ) : (
+                  <span className="text-muted-foreground">Not yet paid</span>
+                )}
+              </TableCell>
               <TableCell>{getStatusBadge(dv.status || 'for_signature')}</TableCell>
               <TableCell>{dv.created_by_profile?.full_name}</TableCell>
               <TableCell>
-                <Select
-                  value={dv.status || 'for_signature'}
-                  onValueChange={(status) => updateStatusMutation.mutate({ id: dv.id, status })}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="for_signature">For Signature</SelectItem>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="processed">Processed</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedDV(dv);
+                      setDetailDialogOpen(true);
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  {isAccountantOrAdmin && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedDV(dv);
+                          setEditDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {dv.status === 'submitted' && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => {
+                            setSelectedDV(dv);
+                            setMarkPaidDialogOpen(true);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Mark as Paid
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           )) || (
             <TableRow>
-              <TableCell colSpan={9} className="text-center">
+              <TableCell colSpan={10} className="text-center">
                 No disbursement vouchers found
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
+
+      <DVDetailDialog
+        dv={selectedDV}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        onEditClick={() => {
+          setDetailDialogOpen(false);
+          setEditDialogOpen(true);
+        }}
+        canEdit={isAccountantOrAdmin || false}
+      />
+
+      <EditDVDialog
+        dv={selectedDV}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['disbursement-vouchers'] });
+        }}
+      />
+
+      <MarkDVPaidDialog
+        dv={selectedDV}
+        open={markPaidDialogOpen}
+        onOpenChange={setMarkPaidDialogOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['disbursement-vouchers'] });
+        }}
+      />
     </div>
   );
 };
