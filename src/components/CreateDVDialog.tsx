@@ -39,21 +39,31 @@ export const CreateDVDialog: React.FC<CreateDVDialogProps> = ({
   const { data: availableIARs } = useQuery({
     queryKey: ['available-iars'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Step 1: Fetch all accepted IARs
+      const { data: acceptedIARs, error: iarsError } = await supabase
         .from('inspection_reports')
         .select(`
           *,
           purchase_orders (*)
         `)
-        .eq('overall_result', 'accepted')
-        .not('id', 'in', 
-          supabase
-            .from('disbursement_vouchers')
-            .select('iar_id')
-        );
+        .eq('overall_result', 'accepted');
 
-      if (error) throw error;
-      return data as InspectionReport[];
+      if (iarsError) throw iarsError;
+
+      // Step 2: Fetch all IAR IDs that already have DVs
+      const { data: existingDVs, error: dvsError } = await supabase
+        .from('disbursement_vouchers')
+        .select('iar_id');
+
+      if (dvsError) throw dvsError;
+
+      // Step 3: Filter out IARs that already have DVs
+      const usedIARIds = new Set(existingDVs?.map(dv => dv.iar_id) || []);
+      const availableIARs = acceptedIARs?.filter(
+        iar => !usedIARIds.has(iar.id)
+      ) || [];
+
+      return availableIARs as InspectionReport[];
     },
   });
 
