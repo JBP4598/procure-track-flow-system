@@ -421,6 +421,7 @@ export type Database = {
           file_name: string
           file_url: string | null
           fiscal_year: number
+          fund_type: string | null
           id: string
           ppmp_number: string | null
           prepared_by: string | null
@@ -442,6 +443,7 @@ export type Database = {
           file_name: string
           file_url?: string | null
           fiscal_year: number
+          fund_type?: string | null
           id?: string
           ppmp_number?: string | null
           prepared_by?: string | null
@@ -463,6 +465,7 @@ export type Database = {
           file_name?: string
           file_url?: string | null
           fiscal_year?: number
+          fund_type?: string | null
           id?: string
           ppmp_number?: string | null
           prepared_by?: string | null

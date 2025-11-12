@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, Plus, FileText } from 'lucide-react';
 import { CreatePPMPDialog } from '@/components/CreatePPMPDialog';
+import { ImportPPMPDialog } from '@/components/ImportPPMPDialog';
 import { PPMPList } from '@/components/PPMPList';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function PPMP() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [stats, setStats] = useState({
     totalPPMPs: 0,
     totalBudget: 0,
@@ -75,7 +77,7 @@ export default function PPMP() {
             <p className="text-gray-600 mt-1">Manage your annual procurement plans</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
               <Upload className="mr-2 h-4 w-4" />
               Upload PPMP
             </Button>
@@ -124,6 +126,13 @@ export default function PPMP() {
         {/* PPMP List */}
         <PPMPList refreshTrigger={refreshTrigger} />
       </div>
+
+      {/* Import Dialog */}
+      <ImportPPMPDialog 
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImportSuccess={handlePPMPCreated}
+      />
     </Layout>
   );
 }

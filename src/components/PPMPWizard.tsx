@@ -19,6 +19,7 @@ interface PPMPFile {
   id: string;
   file_name: string;
   fiscal_year: number;
+  fund_type?: 'general_fund' | 'trust_fund';
   total_budget: number;
   status: string;
   created_at: string;
@@ -39,6 +40,7 @@ interface PPMPWizardProps {
 interface PPMPFormData {
   file_name: string;
   fiscal_year: number;
+  fund_type: 'general_fund' | 'trust_fund';
   status_type: 'INDICATIVE' | 'FINAL';
   end_user_unit: string;
   prepared_date: Date | null;
@@ -79,6 +81,7 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
   const [formData, setFormData] = useState<PPMPFormData>({
     file_name: '',
     fiscal_year: new Date().getFullYear() + 1,
+    fund_type: 'general_fund',
     status_type: 'INDICATIVE',
     end_user_unit: '',
     prepared_date: new Date(),
@@ -139,6 +142,7 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
       setFormData({
         file_name: editingPPMP.file_name,
         fiscal_year: editingPPMP.fiscal_year,
+        fund_type: editingPPMP.fund_type || 'general_fund',
         status_type: (editingPPMP.status_type || 'INDICATIVE') as 'INDICATIVE' | 'FINAL',
         end_user_unit: editingPPMP.end_user_unit || '',
         prepared_date: editingPPMP.prepared_date ? new Date(editingPPMP.prepared_date) : null,
@@ -204,6 +208,7 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
           .update({
             file_name: formData.file_name,
             fiscal_year: formData.fiscal_year,
+            fund_type: formData.fund_type,
             status_type: formData.status_type,
             end_user_unit: formData.end_user_unit,
             prepared_date: formData.prepared_date?.toISOString().split('T')[0] || null,
@@ -295,6 +300,7 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
           .insert({
             file_name: formData.file_name,
             fiscal_year: formData.fiscal_year,
+            fund_type: formData.fund_type,
             status_type: formData.status_type,
             end_user_unit: formData.end_user_unit,
             prepared_date: formData.prepared_date?.toISOString().split('T')[0] || null,
@@ -434,6 +440,22 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
                         </SelectItem>
                       );
                     })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fund_type">Fund Type</Label>
+                <Select
+                  value={formData.fund_type}
+                  onValueChange={(value: 'general_fund' | 'trust_fund') => updateFormData('fund_type', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="general_fund">General Fund</SelectItem>
+                    <SelectItem value="trust_fund">Trust Fund</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
