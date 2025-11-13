@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DateInput } from '@/components/ui/date-input';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PPMPItem {
   id?: string;
@@ -27,6 +28,9 @@ interface PPMPItem {
   schedule_quarter: string;
   supporting_documents: string[];
   remarks_additional: string;
+  date_of_conduct: Date | null;
+  venue: string;
+  program_coordinator_id: string | null;
 }
 
 interface PPMPItemFormProps {
@@ -35,6 +39,19 @@ interface PPMPItemFormProps {
 }
 
 export const PPMPItemForm: React.FC<PPMPItemFormProps> = ({ item, onChange }) => {
+  const [coordinators, setCoordinators] = useState<{ id: string; full_name: string }[]>([]);
+
+  useEffect(() => {
+    const fetchCoordinators = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .order('full_name');
+      if (data) setCoordinators(data);
+    };
+    fetchCoordinators();
+  }, []);
+
   const updateField = (field: keyof PPMPItem, value: any) => {
     const updatedItem = { ...item, [field]: value };
     
@@ -276,7 +293,49 @@ export const PPMPItemForm: React.FC<PPMPItemFormProps> = ({ item, onChange }) =>
         </Select>
       </div>
 
-      {/* Column 12: Delivery/Completion */}
+      {/* Column 12: Date of Conduct */}
+      <div className="space-y-2">
+        <Label>Date of Conduct</Label>
+        <DateInput
+          value={item.date_of_conduct}
+          onChange={(date) => updateField('date_of_conduct', date)}
+          placeholder="Enter conduct date (MM/DD/YYYY)"
+        />
+      </div>
+
+      {/* Column 13: Venue */}
+      <div className="space-y-2">
+        <Label htmlFor="venue">Venue</Label>
+        <Input
+          id="venue"
+          value={item.venue}
+          onChange={(e) => updateField('venue', e.target.value)}
+          placeholder="e.g., Conference Room A, City Hall"
+        />
+      </div>
+
+      {/* Column 14: Program Coordinator */}
+      <div className="space-y-2">
+        <Label htmlFor="program_coordinator_id">Program Coordinator</Label>
+        <Select
+          value={item.program_coordinator_id || ''}
+          onValueChange={(value) => updateField('program_coordinator_id', value || null)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select coordinator" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">None</SelectItem>
+            {coordinators.map((coord) => (
+              <SelectItem key={coord.id} value={coord.id}>
+                {coord.full_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Column 15: Remarks */}
       <div className="space-y-2">
         <Label htmlFor="remarks_additional">Remarks</Label>
         <Textarea

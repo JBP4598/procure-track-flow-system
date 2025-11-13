@@ -70,6 +70,9 @@ interface PPMPItem {
   schedule_quarter: string;
   supporting_documents: string[];
   remarks_additional: string;
+  date_of_conduct: Date | null;
+  venue: string;
+  program_coordinator_id: string | null;
 }
 
 export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, editingPPMP }) => {
@@ -117,6 +120,9 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
       schedule_quarter: 'Q1',
       supporting_documents: [],
       remarks_additional: '',
+      date_of_conduct: null,
+      venue: '',
+      program_coordinator_id: null,
     };
     setItems(prev => [...prev, newItem]);
   };
@@ -188,6 +194,9 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
         schedule_quarter: item.schedule_quarter || 'Q1',
         supporting_documents: item.supporting_documents || [],
         remarks_additional: item.remarks_additional || '',
+        date_of_conduct: item.date_of_conduct ? new Date(item.date_of_conduct) : null,
+        venue: item.venue || '',
+        program_coordinator_id: item.program_coordinator_id || null,
       }));
       
       setItems(existingItems);
@@ -250,6 +259,9 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
             schedule_quarter: item.schedule_quarter,
             supporting_documents: item.supporting_documents,
             remarks_additional: item.remarks_additional,
+            date_of_conduct: item.date_of_conduct?.toISOString().split('T')[0] || null,
+            venue: item.venue,
+            program_coordinator_id: item.program_coordinator_id,
             remaining_quantity: item.quantity,
             remaining_budget: item.total_cost,
           }));
@@ -340,6 +352,9 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
             schedule_quarter: item.schedule_quarter,
             supporting_documents: item.supporting_documents,
             remarks_additional: item.remarks_additional,
+            date_of_conduct: item.date_of_conduct?.toISOString().split('T')[0] || null,
+            venue: item.venue,
+            program_coordinator_id: item.program_coordinator_id,
             remaining_quantity: item.quantity,
             remaining_budget: item.total_cost,
           }));

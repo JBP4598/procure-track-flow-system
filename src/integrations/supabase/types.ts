@@ -500,6 +500,7 @@ export type Database = {
         Row: {
           budget_category: string
           created_at: string | null
+          date_of_conduct: string | null
           description: string | null
           expected_delivery_period: string | null
           id: string
@@ -509,6 +510,7 @@ export type Database = {
           procurement_end_date: string | null
           procurement_method: string | null
           procurement_start_date: string | null
+          program_coordinator_id: string | null
           project_objective: string | null
           project_size: string | null
           project_type: string | null
@@ -524,10 +526,12 @@ export type Database = {
           unit: string
           unit_cost: number
           updated_at: string | null
+          venue: string | null
         }
         Insert: {
           budget_category: string
           created_at?: string | null
+          date_of_conduct?: string | null
           description?: string | null
           expected_delivery_period?: string | null
           id?: string
@@ -537,6 +541,7 @@ export type Database = {
           procurement_end_date?: string | null
           procurement_method?: string | null
           procurement_start_date?: string | null
+          program_coordinator_id?: string | null
           project_objective?: string | null
           project_size?: string | null
           project_type?: string | null
@@ -552,10 +557,12 @@ export type Database = {
           unit: string
           unit_cost: number
           updated_at?: string | null
+          venue?: string | null
         }
         Update: {
           budget_category?: string
           created_at?: string | null
+          date_of_conduct?: string | null
           description?: string | null
           expected_delivery_period?: string | null
           id?: string
@@ -565,6 +572,7 @@ export type Database = {
           procurement_end_date?: string | null
           procurement_method?: string | null
           procurement_start_date?: string | null
+          program_coordinator_id?: string | null
           project_objective?: string | null
           project_size?: string | null
           project_type?: string | null
@@ -580,6 +588,7 @@ export type Database = {
           unit?: string
           unit_cost?: number
           updated_at?: string | null
+          venue?: string | null
         }
         Relationships: [
           {
@@ -587,6 +596,13 @@ export type Database = {
             columns: ["ppmp_file_id"]
             isOneToOne: false
             referencedRelation: "ppmp_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppmp_items_program_coordinator_id_fkey"
+            columns: ["program_coordinator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

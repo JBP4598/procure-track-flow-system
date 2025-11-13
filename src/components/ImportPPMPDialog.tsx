@@ -28,6 +28,8 @@ interface ParsedItem {
   budget_category: string;
   schedule_quarter?: string;
   procurement_method?: string;
+  date_of_conduct?: string;
+  venue?: string;
 }
 
 export const ImportPPMPDialog: React.FC<ImportPPMPDialogProps> = ({
@@ -79,6 +81,8 @@ export const ImportPPMPDialog: React.FC<ImportPPMPDialogProps> = ({
           budget_category: budgetCategory,
           schedule_quarter: row['Schedule/Quarter'] || row['Quarter'] || null,
           procurement_method: row['Mode of Procurement'] || row['Procurement Method'] || null,
+          date_of_conduct: row['Date of Conduct'] || row['Conduct Date'] || null,
+          venue: row['Venue'] || row['Location'] || null,
         };
       }).filter(item => item.item_name && item.quantity > 0);
 
@@ -148,6 +152,8 @@ export const ImportPPMPDialog: React.FC<ImportPPMPDialogProps> = ({
         budget_category: item.budget_category,
         schedule_quarter: item.schedule_quarter,
         procurement_method: item.procurement_method,
+        date_of_conduct: item.date_of_conduct || null,
+        venue: item.venue || null,
         remaining_quantity: item.quantity,
         remaining_budget: item.total_cost,
       }));

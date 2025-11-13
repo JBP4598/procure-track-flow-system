@@ -47,6 +47,9 @@ interface PPMPItem {
   remarks_additional?: string;
   remaining_quantity?: number;
   remaining_budget?: number;
+  date_of_conduct?: string;
+  venue?: string;
+  program_coordinator_id?: string;
 }
 
 interface PPMPDetailDialogProps {
@@ -228,6 +231,8 @@ export const PPMPDetailDialog: React.FC<PPMPDetailDialogProps> = ({
                       <TableHead>Unit Cost</TableHead>
                       <TableHead>Total Cost</TableHead>
                       <TableHead>Budget Category</TableHead>
+                      <TableHead>Date of Conduct</TableHead>
+                      <TableHead>Venue</TableHead>
                       <TableHead>Schedule</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -241,6 +246,8 @@ export const PPMPDetailDialog: React.FC<PPMPDetailDialogProps> = ({
                         <TableCell>{formatCurrency(item.unit_cost)}</TableCell>
                         <TableCell className="font-medium">{formatCurrency(item.total_cost)}</TableCell>
                         <TableCell>{item.budget_category}</TableCell>
+                        <TableCell>{formatDate(item.date_of_conduct)}</TableCell>
+                        <TableCell className="max-w-xs truncate">{item.venue || 'N/A'}</TableCell>
                         <TableCell>{item.schedule_quarter || 'N/A'}</TableCell>
                       </TableRow>
                     ))}
