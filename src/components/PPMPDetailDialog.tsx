@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Eye, Download, Edit, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { calculateVarianceInfo, getExecutionStatusBadge } from '@/utils/ppmpVariance';
 
 interface PPMPFile {
   id: string;
@@ -50,6 +51,14 @@ interface PPMPItem {
   date_of_conduct?: string;
   venue?: string;
   program_coordinator_id?: string;
+  pr_submitted_date?: string;
+  pr_actual_amount?: number;
+  po_number?: string;
+  po_actual_amount?: number;
+  winning_supplier?: string;
+  dv_prepared_date?: string;
+  dv_actual_amount?: number;
+  execution_status?: 'planned' | 'pr_submitted' | 'po_issued' | 'completed';
 }
 
 interface PPMPDetailDialogProps {
@@ -80,7 +89,10 @@ export const PPMPDetailDialog: React.FC<PPMPDetailDialogProps> = ({
           .order('created_at');
 
         if (error) throw error;
-        setItems(data || []);
+        setItems((data as any[])?.map(item => ({
+          ...item,
+          execution_status: (item.execution_status || 'planned') as PPMPItem['execution_status']
+        })) || []);
       } catch (error) {
         console.error('Error fetching PPMP items:', error);
         toast({
@@ -225,32 +237,44 @@ export const PPMPDetailDialog: React.FC<PPMPDetailDialogProps> = ({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Project Type</TableHead>
                       <TableHead>Quantity</TableHead>
-                      <TableHead>Unit Cost</TableHead>
-                      <TableHead>Total Cost</TableHead>
-                      <TableHead>Budget Category</TableHead>
-                      <TableHead>Date of Conduct</TableHead>
-                      <TableHead>Venue</TableHead>
-                      <TableHead>Schedule</TableHead>
+                      <TableHead>Planned Amount</TableHead>
+                      <TableHead>Actual Amount</TableHead>
+                      <TableHead>Variance</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Supplier</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.item_name}</TableCell>
-                        <TableCell className="max-w-xs truncate">{item.description || 'N/A'}</TableCell>
-                        <TableCell>{item.project_type || 'N/A'}</TableCell>
-                        <TableCell>{item.quantity} {item.unit}</TableCell>
-                        <TableCell>{formatCurrency(item.unit_cost)}</TableCell>
-                        <TableCell className="font-medium">{formatCurrency(item.total_cost)}</TableCell>
-                        <TableCell>{item.budget_category}</TableCell>
-                        <TableCell>{formatDate(item.date_of_conduct)}</TableCell>
-                        <TableCell className="max-w-xs truncate">{item.venue || 'N/A'}</TableCell>
-                        <TableCell>{item.schedule_quarter || 'N/A'}</TableCell>
-                      </TableRow>
-                    ))}
+                    {items.map((item) => {
+                      const varianceInfo = calculateVarianceInfo(item);
+                      const statusBadge = getExecutionStatusBadge(item.execution_status);
+                      const actualAmount = item.dv_actual_amount || item.po_actual_amount || item.pr_actual_amount;
+
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.item_name}</TableCell>
+                          <TableCell>{item.quantity} {item.unit}</TableCell>
+                          <TableCell>{formatCurrency(item.total_cost)}</TableCell>
+                          <TableCell>
+                            {actualAmount ? formatCurrency(actualAmount) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {actualAmount ? (
+                              <span className={varianceInfo.color}>
+                                {formatCurrency(Math.abs(varianceInfo.variance))}
+                              </span>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">
+                            {item.winning_supplier || '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -306,6 +330,66 @@ export const PPMPDetailDialog: React.FC<PPMPDetailDialogProps> = ({
                       <span>{formatCurrency(amount)}</span>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Execution & Variance Summary</CardTitle>
+                <CardDescription>Track actual spending vs planned budget</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Planned</p>
+                    <p className="text-lg font-bold">{formatCurrency(ppmpFile.total_budget)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Actual</p>
+                    <p className="text-lg font-bold">
+                      {formatCurrency(
+                        items.reduce((sum, item) => {
+                          const actual = item.dv_actual_amount || item.po_actual_amount || item.pr_actual_amount || 0;
+                          return sum + actual;
+                        }, 0)
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Variance</p>
+                    <p className="text-lg font-bold text-green-600">
+                      {formatCurrency(
+                        items.reduce((sum, item) => {
+                          return sum + calculateVarianceInfo(item).variance;
+                        }, 0)
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Items with Data</p>
+                    <p className="text-lg font-bold">
+                      {items.filter(item => item.dv_actual_amount || item.po_actual_amount || item.pr_actual_amount).length} / {items.length}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-semibold mb-2">Status Breakdown:</p>
+                  {Object.entries(
+                    items.reduce((acc, item) => {
+                      const status = item.execution_status || 'planned';
+                      acc[status] = (acc[status] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  ).map(([status, count]) => {
+                    const badge = getExecutionStatusBadge(status as any);
+                    return (
+                      <div key={status} className="flex justify-between items-center">
+                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                        <span>{count} items</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

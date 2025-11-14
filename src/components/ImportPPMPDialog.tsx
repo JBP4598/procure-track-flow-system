@@ -30,6 +30,11 @@ interface ParsedItem {
   procurement_method?: string;
   date_of_conduct?: string;
   venue?: string;
+  pr_actual_amount?: number;
+  po_number?: string;
+  po_actual_amount?: number;
+  winning_supplier?: string;
+  dv_actual_amount?: number;
 }
 
 export const ImportPPMPDialog: React.FC<ImportPPMPDialogProps> = ({
@@ -83,6 +88,11 @@ export const ImportPPMPDialog: React.FC<ImportPPMPDialogProps> = ({
           procurement_method: row['Mode of Procurement'] || row['Procurement Method'] || null,
           date_of_conduct: row['Date of Conduct'] || row['Conduct Date'] || null,
           venue: row['Venue'] || row['Location'] || null,
+          pr_actual_amount: parseFloat(row['PR Amount'] || row['PR Actual'] || '0') || null,
+          po_number: row['PO Number'] || null,
+          po_actual_amount: parseFloat(row['PO Amount'] || row['PO Actual'] || '0') || null,
+          winning_supplier: row['Supplier'] || row['Winning Supplier'] || null,
+          dv_actual_amount: parseFloat(row['DV Amount'] || row['Actual Amount'] || '0') || null,
         };
       }).filter(item => item.item_name && item.quantity > 0);
 
@@ -154,6 +164,12 @@ export const ImportPPMPDialog: React.FC<ImportPPMPDialogProps> = ({
         procurement_method: item.procurement_method,
         date_of_conduct: item.date_of_conduct || null,
         venue: item.venue || null,
+        pr_actual_amount: item.pr_actual_amount || null,
+        po_number: item.po_number || null,
+        po_actual_amount: item.po_actual_amount || null,
+        winning_supplier: item.winning_supplier || null,
+        dv_actual_amount: item.dv_actual_amount || null,
+        execution_status: item.dv_actual_amount ? 'completed' : item.po_actual_amount ? 'po_issued' : item.pr_actual_amount ? 'pr_submitted' : 'planned',
         remaining_quantity: item.quantity,
         remaining_budget: item.total_cost,
       }));
