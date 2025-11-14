@@ -5,7 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DateInput } from '@/components/ui/date-input';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { calculateVarianceInfo } from '@/utils/ppmpVariance';
 
 interface PPMPItem {
   id?: string;
@@ -31,6 +34,14 @@ interface PPMPItem {
   date_of_conduct: Date | null;
   venue: string;
   program_coordinator_id: string | null;
+  pr_submitted_date: Date | null;
+  pr_actual_amount: number | null;
+  po_number: string;
+  po_actual_amount: number | null;
+  winning_supplier: string;
+  dv_prepared_date: Date | null;
+  dv_actual_amount: number | null;
+  execution_status: 'planned' | 'pr_submitted' | 'po_issued' | 'completed';
 }
 
 interface PPMPItemFormProps {
@@ -345,6 +356,147 @@ export const PPMPItemForm: React.FC<PPMPItemFormProps> = ({ item, onChange }) =>
           placeholder="Additional remarks"
           rows={2}
         />
+      </div>
+
+      {/* Execution Tracking Section (spans all columns) */}
+      <div className="col-span-full mt-6">
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="execution">
+            <AccordionTrigger className="text-lg font-semibold">
+              Execution Tracking & Budget Variance
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                {/* PR Section */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h4 className="font-semibold text-sm">Purchase Request (PR)</h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="pr_submitted_date">PR Submitted Date</Label>
+                    <DateInput
+                      value={item.pr_submitted_date}
+                      onChange={(date) => updateField('pr_submitted_date', date)}
+                      placeholder="Select PR date"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pr_actual_amount">PR Actual Amount</Label>
+                    <Input
+                      id="pr_actual_amount"
+                      type="number"
+                      value={item.pr_actual_amount || ''}
+                      onChange={(e) => updateField('pr_actual_amount', parseFloat(e.target.value) || null)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                {/* PO Section */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h4 className="font-semibold text-sm">Purchase Order (PO)</h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="po_number">PO Number</Label>
+                    <Input
+                      id="po_number"
+                      value={item.po_number}
+                      onChange={(e) => updateField('po_number', e.target.value)}
+                      placeholder="PO-000001-2024"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="po_actual_amount">PO Actual Amount</Label>
+                    <Input
+                      id="po_actual_amount"
+                      type="number"
+                      value={item.po_actual_amount || ''}
+                      onChange={(e) => updateField('po_actual_amount', parseFloat(e.target.value) || null)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="winning_supplier">Winning Supplier</Label>
+                    <Input
+                      id="winning_supplier"
+                      value={item.winning_supplier}
+                      onChange={(e) => updateField('winning_supplier', e.target.value)}
+                      placeholder="Supplier name"
+                    />
+                  </div>
+                </div>
+
+                {/* DV Section */}
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h4 className="font-semibold text-sm">Disbursement Voucher (DV)</h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="dv_prepared_date">DV Prepared Date</Label>
+                    <DateInput
+                      value={item.dv_prepared_date}
+                      onChange={(date) => updateField('dv_prepared_date', date)}
+                      placeholder="Select DV date"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dv_actual_amount">DV Actual Amount</Label>
+                    <Input
+                      id="dv_actual_amount"
+                      type="number"
+                      value={item.dv_actual_amount || ''}
+                      onChange={(e) => updateField('dv_actual_amount', parseFloat(e.target.value) || null)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="execution_status">Execution Status</Label>
+                    <Select
+                      value={item.execution_status}
+                      onValueChange={(value: PPMPItem['execution_status']) => updateField('execution_status', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="planned">Planned</SelectItem>
+                        <SelectItem value="pr_submitted">PR Submitted</SelectItem>
+                        <SelectItem value="po_issued">PO Issued</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Budget Variance Display */}
+              <div className="mt-6 p-4 bg-muted rounded-lg">
+                <h4 className="font-semibold mb-3">Budget Variance Analysis</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Planned Amount</p>
+                    <p className="text-lg font-semibold">
+                      ₱{item.total_cost.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Actual Amount</p>
+                    <p className="text-lg font-semibold">
+                      ₱{(item.dv_actual_amount || item.po_actual_amount || item.pr_actual_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Variance</p>
+                    <p className={`text-lg font-semibold ${calculateVarianceInfo(item).color}`}>
+                      ₱{Math.abs(calculateVarianceInfo(item).variance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <Badge variant={calculateVarianceInfo(item).variance > 0 ? 'default' : calculateVarianceInfo(item).variance < 0 ? 'destructive' : 'secondary'}>
+                      {calculateVarianceInfo(item).status} ({calculateVarianceInfo(item).variancePercentage.toFixed(1)}%)
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
     </div>
   );

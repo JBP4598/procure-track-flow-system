@@ -73,6 +73,14 @@ interface PPMPItem {
   date_of_conduct: Date | null;
   venue: string;
   program_coordinator_id: string | null;
+  pr_submitted_date: Date | null;
+  pr_actual_amount: number | null;
+  po_number: string;
+  po_actual_amount: number | null;
+  winning_supplier: string;
+  dv_prepared_date: Date | null;
+  dv_actual_amount: number | null;
+  execution_status: 'planned' | 'pr_submitted' | 'po_issued' | 'completed';
 }
 
 export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, editingPPMP }) => {
@@ -123,6 +131,14 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
       date_of_conduct: null,
       venue: '',
       program_coordinator_id: null,
+      pr_submitted_date: null,
+      pr_actual_amount: null,
+      po_number: '',
+      po_actual_amount: null,
+      winning_supplier: '',
+      dv_prepared_date: null,
+      dv_actual_amount: null,
+      execution_status: 'planned',
     };
     setItems(prev => [...prev, newItem]);
   };
@@ -197,6 +213,14 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
         date_of_conduct: item.date_of_conduct ? new Date(item.date_of_conduct) : null,
         venue: item.venue || '',
         program_coordinator_id: item.program_coordinator_id || null,
+        pr_submitted_date: item.pr_submitted_date ? new Date(item.pr_submitted_date) : null,
+        pr_actual_amount: item.pr_actual_amount || null,
+        po_number: item.po_number || '',
+        po_actual_amount: item.po_actual_amount || null,
+        winning_supplier: item.winning_supplier || '',
+        dv_prepared_date: item.dv_prepared_date ? new Date(item.dv_prepared_date) : null,
+        dv_actual_amount: item.dv_actual_amount || null,
+        execution_status: (item.execution_status || 'planned') as PPMPItem['execution_status'],
       }));
       
       setItems(existingItems);
@@ -262,6 +286,14 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
             date_of_conduct: item.date_of_conduct?.toISOString().split('T')[0] || null,
             venue: item.venue,
             program_coordinator_id: item.program_coordinator_id,
+            pr_submitted_date: item.pr_submitted_date?.toISOString().split('T')[0] || null,
+            pr_actual_amount: item.pr_actual_amount,
+            po_number: item.po_number,
+            po_actual_amount: item.po_actual_amount,
+            winning_supplier: item.winning_supplier,
+            dv_prepared_date: item.dv_prepared_date?.toISOString().split('T')[0] || null,
+            dv_actual_amount: item.dv_actual_amount,
+            execution_status: item.execution_status,
             remaining_quantity: item.quantity,
             remaining_budget: item.total_cost,
           }));
@@ -355,6 +387,14 @@ export const PPMPWizard: React.FC<PPMPWizardProps> = ({ onComplete, onCancel, ed
             date_of_conduct: item.date_of_conduct?.toISOString().split('T')[0] || null,
             venue: item.venue,
             program_coordinator_id: item.program_coordinator_id,
+            pr_submitted_date: item.pr_submitted_date?.toISOString().split('T')[0] || null,
+            pr_actual_amount: item.pr_actual_amount,
+            po_number: item.po_number,
+            po_actual_amount: item.po_actual_amount,
+            winning_supplier: item.winning_supplier,
+            dv_prepared_date: item.dv_prepared_date?.toISOString().split('T')[0] || null,
+            dv_actual_amount: item.dv_actual_amount,
+            execution_status: item.execution_status,
             remaining_quantity: item.quantity,
             remaining_budget: item.total_cost,
           }));
